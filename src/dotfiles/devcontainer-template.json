@@ -2,7 +2,7 @@
   "id": "dotfiles",
   "version": "1.0.0",
   "name": "Dotfiles Dev Environment",
-  "description": "A dev environment with your dotfiles pre-installed",
+  "description": "A dev container with Fish shell, starship prompt, your dotfiles, and AWS SSO integration pre-configured for a personalized development experience.",
   "documentationURL": "https://github.com/technicalpickles/dotfiles-devcontainer",
   "options": {
     "dotfilesRepo": {
