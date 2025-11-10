@@ -1,0 +1,32 @@
+{
+  "id": "pickles",
+  "version": "1.0.0",
+  "name": "Pickled Dev Environment",
+  "description": "A dev environment with Josh's dotfiles (pickles) pre-installed",
+  "documentationURL": "https://github.com/technicalpickles/pickled-devcontainer",
+  "options": {
+    "role": {
+      "type": "string",
+      "description": "Role for dotfiles configuration",
+      "proposals": [
+        "devcontainer",
+        "personal",
+        "work"
+      ],
+      "default": "devcontainer"
+    },
+    "dotfilesRepo": {
+      "type": "string",
+      "description": "Dotfiles repository URL",
+      "default": "https://github.com/technicalpickles/dotfiles.git"
+    },
+    "dotfilesBranch": {
+      "type": "string",
+      "description": "Dotfiles repository branch",
+      "default": "main"
+    }
+  },
+  "platforms": [
+    "Any"
+  ]
+}

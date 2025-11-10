@@ -1,0 +1,31 @@
+{
+  "name": "Pickled Dev Environment",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "DOTPICKLES_ROLE": "${templateOption:role}",
+      "DOTFILES_REPO": "${templateOption:dotfilesRepo}",
+      "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/flexwie/devcontainer-features/op:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "fish",
+        "terminal.integrated.profiles.linux": {
+          "fish": {
+            "path": "/usr/bin/fish"
+          }
+        }
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
+}
