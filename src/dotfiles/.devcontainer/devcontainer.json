@@ -7,6 +7,9 @@
       "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}"
     }
   },
+  "mounts": [
+    "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,readonly"
+  ],
   "containerEnv": ${templateOption:installEnvVars},
   // To use a named volume for better performance on macOS:
   // Uncomment the next two lines and comment out or remove them for bind mount mode
@@ -14,6 +17,7 @@
   // "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/flexwie/devcontainer-features/op:1": {}
   },
   "customizations": {
@@ -31,5 +35,6 @@
       }
     }
   },
-  "postCreateCommand": "bash .devcontainer/post-create.sh"
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "initializeCommand": "mkdir -p ${localEnv:HOME}/.aws"
 }
