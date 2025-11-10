@@ -8,7 +8,7 @@
     "dotfilesRepo": {
       "type": "string",
       "description": "Dotfiles repository URL",
-      "default": "https://github.com/YOUR_USERNAME/dotfiles.git"
+      "default": "https://github.com/technicalpickles/dotfiles.git"
     },
     "dotfilesBranch": {
       "type": "string",
