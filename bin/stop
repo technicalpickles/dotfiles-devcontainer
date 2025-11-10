@@ -1,119 +1,112 @@
 #!/usr/bin/env bash
-# Stop and clean up the devcontainer
+# Stop and clean up the template container
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-REMOVE_CONTAINER=false
-REMOVE_VOLUMES=false
+TEMPLATE_ID="${1:-pickles}"
+CLEAN_BUILD_DIR=false
 
 usage() {
   cat << EOF
-Usage: $(basename "$0") [OPTIONS]
+Usage: $(basename "$0") [TEMPLATE_ID] [OPTIONS]
 
-Stop the devcontainer and optionally remove it.
+Stop and clean up the template container.
+
+ARGUMENTS:
+  TEMPLATE_ID    Template to stop (default: pickles)
 
 OPTIONS:
-  -r, --remove        Remove the container after stopping
-  -v, --volumes       Also remove volumes (requires --remove)
-  -h, --help          Show this help message
+  -c, --clean    Also remove the build directory (tmp/TEMPLATE_ID)
+  -h, --help     Show this help message
 
 EXAMPLES:
-  # Just stop the container
+  # Stop pickles container
   $(basename "$0")
+  $(basename "$0") pickles
 
-  # Stop and remove the container
-  $(basename "$0") --remove
-
-  # Stop, remove container and volumes (clean slate)
-  $(basename "$0") --remove --volumes
+  # Stop and clean up build directory
+  $(basename "$0") pickles --clean
 
 WORKFLOW:
-  After stopping/removing, you can rebuild with:
-    bin/devcontainer-build
-    bin/devcontainer-run
-
-  Or use the CLI directly:
-    devcontainer up --workspace-folder . --remove-existing-container
+  After stopping, you can rebuild with:
+    bin/build [TEMPLATE_ID]
+    bin/run [TEMPLATE_ID]
 EOF
 }
 
+# Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    -r | --remove)
-      REMOVE_CONTAINER=true
-      shift
-      ;;
-    -v | --volumes)
-      REMOVE_VOLUMES=true
+    -c | --clean)
+      CLEAN_BUILD_DIR=true
       shift
       ;;
     -h | --help)
       usage
       exit 0
       ;;
-    *)
+    -*)
       echo "Error: Unknown option $1" >&2
       usage
       exit 1
       ;;
+    *)
+      # First non-option argument is template ID
+      if [[ -z "${TEMPLATE_ID_SET:-}" ]]; then
+        TEMPLATE_ID="$1"
+        TEMPLATE_ID_SET=true
+      fi
+      shift
+      ;;
   esac
 done
 
-if [[ "$REMOVE_VOLUMES" == "true" && "$REMOVE_CONTAINER" == "false" ]]; then
-  echo "Error: --volumes requires --remove" >&2
-  exit 1
-fi
+SRC_DIR="$REPO_ROOT/tmp/${TEMPLATE_ID}"
+ID_LABEL="test-container=${TEMPLATE_ID}"
 
-echo "Stopping devcontainer..."
-echo "Workspace: $REPO_ROOT"
+echo "Stopping template: ${TEMPLATE_ID}"
+echo "Build directory: ${SRC_DIR}"
 echo
 
-# Find the container for this workspace
-CONTAINER_ID=$(docker ps -a --filter "label=devcontainer.local_folder=$REPO_ROOT" --format "{{.ID}}" | head -1)
+# Find the container by label
+CONTAINER_ID=$(docker ps -a --filter "label=${ID_LABEL}" --format "{{.ID}}" | head -1)
 
 if [[ -z "$CONTAINER_ID" ]]; then
-  echo "No devcontainer found for this workspace"
-  exit 0
+  echo "No container found for template: ${TEMPLATE_ID}"
+else
+  CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
+  echo "Found container: $CONTAINER_NAME ($CONTAINER_ID)"
+  echo
+
+  # Stop and remove the container
+  echo "Stopping and removing container..."
+  docker rm -f "$CONTAINER_ID"
+  echo "✓ Container removed"
 fi
 
-CONTAINER_NAME=$(docker inspect --format='{{.Name}}' "$CONTAINER_ID" | sed 's/^\///')
-echo "Found container: $CONTAINER_NAME ($CONTAINER_ID)"
-echo
-
-# Stop the container
-echo "Stopping container..."
-docker stop "$CONTAINER_ID"
-echo "✓ Container stopped"
-
-if [[ "$REMOVE_CONTAINER" == "true" ]]; then
-  echo
-  echo "Removing container..."
-
-  REMOVE_ARGS=()
-  if [[ "$REMOVE_VOLUMES" == "true" ]]; then
-    REMOVE_ARGS+=("-v")
-    echo "  (including volumes)"
+# Clean up build directory if requested
+if [[ "$CLEAN_BUILD_DIR" == "true" ]]; then
+  if [[ -d "${SRC_DIR}" ]]; then
+    echo
+    echo "Removing build directory: ${SRC_DIR}"
+    rm -rf "${SRC_DIR}"
+    echo "✓ Build directory removed"
   fi
-
-  docker rm "${REMOVE_ARGS[@]}" "$CONTAINER_ID"
-  echo "✓ Container removed"
 fi
 
 echo
 echo "Done! 🛑"
 echo
 
-if [[ "$REMOVE_CONTAINER" == "true" ]]; then
-  echo "To rebuild and start fresh:"
-  echo "  bin/devcontainer-build"
-  echo "  bin/devcontainer-run"
-else
-  echo "To start the container again:"
-  echo "  docker start $CONTAINER_ID"
+if [[ "$CLEAN_BUILD_DIR" == "false" && -d "${SRC_DIR}" ]]; then
+  echo "Build directory still exists at: ${SRC_DIR}"
+  echo "To remove it: $(basename "$0") ${TEMPLATE_ID} --clean"
   echo
-  echo "To remove the container:"
-  echo "  $(basename "$0") --remove"
 fi
+
+echo "To rebuild and test:"
+echo "  bin/build ${TEMPLATE_ID}"
+echo "  bin/run ${TEMPLATE_ID}"

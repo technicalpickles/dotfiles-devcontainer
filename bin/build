@@ -1,117 +1,117 @@
 #!/usr/bin/env bash
-# Build and optionally push the devcontainer image
+# Build the pickles devcontainer template
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-IMAGE_NAME="${DEVCONTAINER_IMAGE_NAME:-ghcr.io/technicalpickles/pickled-devcontainer}"
-IMAGE_TAG="${DEVCONTAINER_IMAGE_TAG:-latest}"
-PUSH="${DEVCONTAINER_PUSH:-false}"
+TEMPLATE_ID="${1:-pickles}"
 
 usage() {
   cat << EOF
-Usage: $(basename "$0") [OPTIONS]
+Usage: $(basename "$0") [TEMPLATE_ID]
 
-Build the devcontainer image for this repository.
+Build a devcontainer template for testing.
+
+ARGUMENTS:
+  TEMPLATE_ID    Template to build (default: pickles)
 
 OPTIONS:
-  -t, --tag TAG       Image tag (default: latest)
-  -n, --name NAME     Image name (default: ghcr.io/technicalpickles/pickled-devcontainer)
-  -p, --push          Push image to registry after build
-  -h, --help          Show this help message
-
-ENVIRONMENT VARIABLES:
-  DEVCONTAINER_IMAGE_NAME  Override default image name
-  DEVCONTAINER_IMAGE_TAG   Override default image tag
-  DEVCONTAINER_PUSH        Set to 'true' to push after build
-  GITHUB_TOKEN             GitHub token to pass as build secret (optional)
+  -h, --help     Show this help message
 
 EXAMPLES:
-  # Build locally
+  # Build the pickles template
   $(basename "$0")
+  $(basename "$0") pickles
 
-  # Build with GitHub token from environment
-  GITHUB_TOKEN=\$GITHUB_TOKEN $(basename "$0")
+WORKFLOW:
+  This script mimics the GitHub Actions smoke-test workflow:
+  1. Copies template to tmp/
+  2. Replaces template options with defaults
+  3. Copies test files
+  4. Builds the devcontainer using @devcontainers/cli
 
-  # Build and push
-  $(basename "$0") --push
-
-  # Build with custom tag
-  $(basename "$0") --tag v1.0.0 --push
+After building, use 'bin/run' to test the container.
 EOF
 }
 
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -t | --tag)
-      IMAGE_TAG="$2"
-      shift 2
-      ;;
-    -n | --name)
-      IMAGE_NAME="$2"
-      shift 2
-      ;;
-    -p | --push)
-      PUSH=true
-      shift
-      ;;
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Error: Unknown option $1" >&2
-      usage
-      exit 1
-      ;;
-  esac
-done
-
-FULL_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
-
-echo "Building devcontainer image: $FULL_IMAGE"
-echo "Workspace: $REPO_ROOT"
-echo "Push after build: $PUSH"
-echo
-
-BUILD_ARGS=(
-  "build"
-  "--workspace-folder" "$REPO_ROOT"
-  "--image-name" "$FULL_IMAGE"
-)
-
-if [[ "$PUSH" == "true" ]]; then
-  BUILD_ARGS+=("--push")
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
 fi
 
-# Ensure GitHub token is available as build secret
-# The secret is configured in devcontainer.json to read from GITHUB_TOKEN env var
-if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  # Try to get token from gh CLI if available
-  if command -v gh > /dev/null 2>&1; then
-    echo "GITHUB_TOKEN not set, attempting to get token from gh CLI..."
-    if GITHUB_TOKEN=$(gh auth token 2> /dev/null); then
-      echo "Successfully retrieved token from gh CLI"
-      export GITHUB_TOKEN
-    else
-      echo "Warning: Failed to get token from gh CLI." >&2
-      echo "Build may fail if dotfiles installation requires GitHub API access." >&2
+SRC_DIR="$REPO_ROOT/tmp/${TEMPLATE_ID}"
+
+echo "Building template: ${TEMPLATE_ID}"
+echo "Source: $REPO_ROOT/src/${TEMPLATE_ID}"
+echo "Build dir: ${SRC_DIR}"
+echo
+
+# Clean up any existing build
+if [[ -d "${SRC_DIR}" ]]; then
+  echo "Cleaning up existing build directory..."
+  rm -rf "${SRC_DIR}"
+fi
+
+# Create tmp directory if it doesn't exist
+mkdir -p "$REPO_ROOT/tmp"
+
+# Copy template to temp directory
+echo "Copying template files..."
+shopt -s dotglob
+cp -R "$REPO_ROOT/src/${TEMPLATE_ID}" "${SRC_DIR}"
+
+cd "${SRC_DIR}"
+
+# Configure templates only if `devcontainer-template.json` contains the `options` property.
+echo "Processing template options..."
+OPTION_PROPERTY=$(jq -r '.options' devcontainer-template.json)
+
+if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
+    OPTIONS=$(jq -r '.options | keys[]' devcontainer-template.json)
+
+    if [[ "${OPTIONS}" != "" && "${OPTIONS}" != "null" ]]; then
+        echo "Configuring template options for '${TEMPLATE_ID}'"
+        while IFS= read -r OPTION; do
+            OPTION_KEY="\${templateOption:$OPTION}"
+            OPTION_VALUE=$(jq -r ".options.${OPTION}.default" devcontainer-template.json)
+
+            if [[ "${OPTION_VALUE}" == "" || "${OPTION_VALUE}" == "null" ]]; then
+                echo "Error: Template '${TEMPLATE_ID}' is missing a default value for option '${OPTION}'" >&2
+                exit 1
+            fi
+
+            echo "  Replacing '${OPTION_KEY}' with '${OPTION_VALUE}'"
+            OPTION_VALUE_ESCAPED=$(sed -e 's/[]\/$*.^[]/\\&/g' <<<"${OPTION_VALUE}")
+            find ./ -type f -print0 | xargs -0 sed -i '' "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
+        done <<< "$OPTIONS"
     fi
-  else
-    echo "Warning: GITHUB_TOKEN not set and gh CLI not found." >&2
-    echo "Build may fail if dotfiles installation requires GitHub API access." >&2
-  fi
-else
-  echo "Using GitHub token for build"
 fi
 
-# Use npx to run devcontainer CLI from node_modules or download it
-npx --yes @devcontainers/cli@latest "${BUILD_ARGS[@]}"
+# Copy test files if they exist
+TEST_DIR="$REPO_ROOT/test/${TEMPLATE_ID}"
+if [[ -d "${TEST_DIR}" ]]; then
+    echo "Copying test files..."
+    DEST_DIR="${SRC_DIR}/test-project"
+    mkdir -p "${DEST_DIR}"
+    cp -Rp "${TEST_DIR}"/* "${DEST_DIR}"
+    cp -Rp "$REPO_ROOT/test/test-utils"/* "${DEST_DIR}"
+fi
+
+export DOCKER_BUILDKIT=1
 
 echo
-echo "✓ Build complete: $FULL_IMAGE"
-if [[ "$PUSH" == "true" ]]; then
-  echo "✓ Image pushed to registry"
-fi
+echo "Building Dev Container..."
+ID_LABEL="test-container=${TEMPLATE_ID}"
+npx --yes @devcontainers/cli@latest up --id-label "${ID_LABEL}" --workspace-folder "${SRC_DIR}"
+
+echo
+echo "✓ Build complete!"
+echo
+echo "Container is running with label: ${ID_LABEL}"
+echo "Build directory: ${SRC_DIR}"
+echo
+echo "Next steps:"
+echo "  bin/run ${TEMPLATE_ID}     # Run tests or open a shell"
+echo "  bin/stop ${TEMPLATE_ID}    # Stop and clean up"

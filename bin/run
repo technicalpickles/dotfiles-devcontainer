@@ -1,68 +1,67 @@
 #!/usr/bin/env bash
-# Create and run the devcontainer
+# Run tests or commands in the template container
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-COMMAND="${1:-bash}"
+TEMPLATE_ID="${1:-pickles}"
+shift || true
 
 usage() {
   cat << EOF
-Usage: $(basename "$0") [COMMAND]
+Usage: $(basename "$0") [TEMPLATE_ID] [COMMAND]
 
-Create and run the devcontainer, then execute a command inside it.
+Execute commands or run tests in the template container.
 
 ARGUMENTS:
-  COMMAND    Command to execute in container (default: fish)
+  TEMPLATE_ID    Template to run (default: pickles)
+  COMMAND        Command to execute (default: run tests)
 
 OPTIONS:
-  -h, --help Show this help message
+  -h, --help     Show this help message
 
 EXAMPLES:
-  # Start container and open bash shell
+  # Run tests for pickles template
   $(basename "$0")
+  $(basename "$0") pickles
 
-  # Start container and run a command
-  $(basename "$0") npm test
+  # Open a fish shell
+  $(basename "$0") pickles fish
 
-  # Start container and open fish shell
-  $(basename "$0") fish
-
-  # Run multiple commands
-  $(basename "$0") "npm install && npm test"
+  # Run a custom command
+  $(basename "$0") pickles "ls -la"
 
 WORKFLOW:
-  1. Creates/starts the devcontainer (devcontainer up)
-  2. Executes the specified command inside it (devcontainer exec)
-
-The container will continue running after the command exits.
-Use 'docker ps' to see running containers.
+  The container must already be running (use 'bin/build' first).
+  This executes commands inside the built template container.
 EOF
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+if [[ "${TEMPLATE_ID}" == "-h" || "${TEMPLATE_ID}" == "--help" ]]; then
   usage
   exit 0
 fi
 
-echo "Starting devcontainer..."
-echo "Workspace: $REPO_ROOT"
+SRC_DIR="$REPO_ROOT/tmp/${TEMPLATE_ID}"
+ID_LABEL="test-container=${TEMPLATE_ID}"
+
+echo "Running in template: ${TEMPLATE_ID}"
+echo "Build directory: ${SRC_DIR}"
 echo
 
-# Create and start the container
-npx --yes @devcontainers/cli@latest up --workspace-folder "$REPO_ROOT"
-
-echo
-echo "✓ Container started"
-echo
-echo "Executing command: $*"
-echo
-
-# Execute command in the container
+# If no command specified, run tests
 if [[ $# -eq 0 ]]; then
-  npx --yes @devcontainers/cli@latest exec --workspace-folder "$REPO_ROOT" fish
+  echo "Running tests..."
+  npx --yes @devcontainers/cli@latest exec \
+    --workspace-folder "${SRC_DIR}" \
+    --id-label "${ID_LABEL}" \
+    /bin/sh -c 'set -e && if [ -f "test-project/test.sh" ]; then cd test-project && if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi && ./test.sh; else echo "No tests found"; ls -la; fi'
 else
-  npx --yes @devcontainers/cli@latest exec --workspace-folder "$REPO_ROOT" "$@"
+  echo "Executing: $*"
+  npx --yes @devcontainers/cli@latest exec \
+    --workspace-folder "${SRC_DIR}" \
+    --id-label "${ID_LABEL}" \
+    "$@"
 fi
