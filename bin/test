@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run commands in the dotfiles template container
+# Run tests for the dotfiles template
 
 set -euo pipefail
 
@@ -8,27 +8,20 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 usage() {
   cat << EOF
-Usage: $(basename "$0") [COMMAND]
+Usage: $(basename "$0") [OPTIONS]
 
-Execute commands in the dotfiles template container.
-
-ARGUMENTS:
-  COMMAND        Command to execute (default: open fish shell)
+Run tests for the dotfiles template container.
 
 OPTIONS:
   -h, --help     Show this help message
 
-EXAMPLES:
-  # Open interactive fish shell
-  $(basename "$0")
-
-  # Run a specific command
-  $(basename "$0") ls -la
-  $(basename "$0") "echo test"
-
 WORKFLOW:
   The container must already be running (use 'bin/build' first).
-  This executes commands inside the built template container.
+  This executes the test suite inside the built template container.
+
+EXAMPLES:
+  # Run tests for dotfiles template
+  $(basename "$0")
 EOF
 }
 
@@ -61,21 +54,11 @@ if [[ "$NEEDS_BUILD" == "true" ]]; then
   echo
 fi
 
-echo "Running in template: ${TEMPLATE_ID}"
+echo "Running tests for template: ${TEMPLATE_ID}"
 echo "Build directory: ${SRC_DIR}"
 echo
 
-# If no command specified, open interactive fish shell
-if [[ $# -eq 0 ]]; then
-  echo "Opening fish shell..."
-  npx --yes @devcontainers/cli@latest exec \
-    --workspace-folder "${SRC_DIR}" \
-    --id-label "${ID_LABEL}" \
-    fish
-else
-  echo "Executing: $*"
-  npx --yes @devcontainers/cli@latest exec \
-    --workspace-folder "${SRC_DIR}" \
-    --id-label "${ID_LABEL}" \
-    "$@"
-fi
+npx --yes @devcontainers/cli@latest exec \
+  --workspace-folder "${SRC_DIR}" \
+  --id-label "${ID_LABEL}" \
+  /bin/sh -c 'set -e && if [ -f "test-project/test.sh" ]; then cd test-project && if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi && ./test.sh; else echo "No tests found"; ls -la; fi'

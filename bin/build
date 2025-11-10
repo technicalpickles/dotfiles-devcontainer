@@ -6,16 +6,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TEMPLATE_ID="${1:-dotfiles}"
-
 usage() {
   cat << EOF
-Usage: $(basename "$0") [TEMPLATE_ID]
+Usage: $(basename "$0")
 
-Build a devcontainer template for testing.
-
-ARGUMENTS:
-  TEMPLATE_ID    Template to build (default: dotfiles)
+Build the dotfiles devcontainer template for testing.
 
 OPTIONS:
   -h, --help     Show this help message
@@ -23,7 +18,6 @@ OPTIONS:
 EXAMPLES:
   # Build the dotfiles template
   $(basename "$0")
-  $(basename "$0") dotfiles
 
 WORKFLOW:
   This script mimics the GitHub Actions smoke-test workflow:
@@ -40,6 +34,8 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
 fi
+
+TEMPLATE_ID="dotfiles"
 
 SRC_DIR="$REPO_ROOT/tmp/${TEMPLATE_ID}"
 
@@ -113,5 +109,6 @@ echo "Container is running with label: ${ID_LABEL}"
 echo "Build directory: ${SRC_DIR}"
 echo
 echo "Next steps:"
-echo "  bin/run ${TEMPLATE_ID}     # Run tests or open a shell"
-echo "  bin/stop ${TEMPLATE_ID}    # Stop and clean up"
+echo "  bin/run          # Open fish shell"
+echo "  bin/test         # Run tests"
+echo "  bin/stop         # Stop and clean up"

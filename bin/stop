@@ -1,39 +1,35 @@
 #!/usr/bin/env bash
-# Stop and clean up the template container
+# Stop and clean up the dotfiles template container
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TEMPLATE_ID="${1:-dotfiles}"
+TEMPLATE_ID="dotfiles"
 CLEAN_BUILD_DIR=false
 
 usage() {
   cat << EOF
-Usage: $(basename "$0") [TEMPLATE_ID] [OPTIONS]
+Usage: $(basename "$0") [OPTIONS]
 
-Stop and clean up the template container.
-
-ARGUMENTS:
-  TEMPLATE_ID    Template to stop (default: dotfiles)
+Stop and clean up the dotfiles template container.
 
 OPTIONS:
-  -c, --clean    Also remove the build directory (tmp/TEMPLATE_ID)
+  -c, --clean    Also remove the build directory (tmp/dotfiles)
   -h, --help     Show this help message
 
 EXAMPLES:
   # Stop dotfiles container
   $(basename "$0")
-  $(basename "$0") dotfiles
 
   # Stop and clean up build directory
-  $(basename "$0") dotfiles --clean
+  $(basename "$0") --clean
 
 WORKFLOW:
   After stopping, you can rebuild with:
-    bin/build [TEMPLATE_ID]
-    bin/run [TEMPLATE_ID]
+    bin/build
+    bin/run
 EOF
 }
 
@@ -54,12 +50,9 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
     *)
-      # First non-option argument is template ID
-      if [[ -z "${TEMPLATE_ID_SET:-}" ]]; then
-        TEMPLATE_ID="$1"
-        TEMPLATE_ID_SET=true
-      fi
-      shift
+      echo "Error: Unexpected argument $1" >&2
+      usage
+      exit 1
       ;;
   esac
 done
@@ -103,10 +96,10 @@ echo
 
 if [[ "$CLEAN_BUILD_DIR" == "false" && -d "${SRC_DIR}" ]]; then
   echo "Build directory still exists at: ${SRC_DIR}"
-  echo "To remove it: $(basename "$0") ${TEMPLATE_ID} --clean"
+  echo "To remove it: $(basename "$0") --clean"
   echo
 fi
 
 echo "To rebuild and test:"
-echo "  bin/build ${TEMPLATE_ID}"
-echo "  bin/run ${TEMPLATE_ID}"
+echo "  bin/build"
+echo "  bin/run"
