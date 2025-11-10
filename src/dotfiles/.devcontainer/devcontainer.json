@@ -1,13 +1,17 @@
 {
-  "name": "Pickled Dev Environment",
+  "name": "Dotfiles Dev Environment",
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
-      "DOTPICKLES_ROLE": "${templateOption:role}",
       "DOTFILES_REPO": "${templateOption:dotfilesRepo}",
       "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}"
     }
   },
+  "containerEnv": ${templateOption:installEnvVars},
+  // To use a named volume for better performance on macOS:
+  // Uncomment the next two lines and comment out or remove them for bind mount mode
+  // "workspaceMount": "source=${templateOption:volumeName},target=/workspaces/${localWorkspaceFolderBasename},type=volume",
+  // "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/flexwie/devcontainer-features/op:1": {}

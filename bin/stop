@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TEMPLATE_ID="${1:-pickles}"
+TEMPLATE_ID="${1:-dotfiles}"
 CLEAN_BUILD_DIR=false
 
 usage() {
@@ -16,19 +16,19 @@ Usage: $(basename "$0") [TEMPLATE_ID] [OPTIONS]
 Stop and clean up the template container.
 
 ARGUMENTS:
-  TEMPLATE_ID    Template to stop (default: pickles)
+  TEMPLATE_ID    Template to stop (default: dotfiles)
 
 OPTIONS:
   -c, --clean    Also remove the build directory (tmp/TEMPLATE_ID)
   -h, --help     Show this help message
 
 EXAMPLES:
-  # Stop pickles container
+  # Stop dotfiles container
   $(basename "$0")
-  $(basename "$0") pickles
+  $(basename "$0") dotfiles
 
   # Stop and clean up build directory
-  $(basename "$0") pickles --clean
+  $(basename "$0") dotfiles --clean
 
 WORKFLOW:
   After stopping, you can rebuild with:

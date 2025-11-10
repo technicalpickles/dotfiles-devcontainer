@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply the pickles devcontainer template to a project
+# Apply the dotfiles devcontainer template to a project
 
 set -euo pipefail
 
@@ -7,9 +7,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Default values
-TEMPLATE_ID="ghcr.io/technicalpickles/pickled-devcontainer/pickles:latest"
-ROLE="${ROLE:-devcontainer}"
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
+TEMPLATE_ID="ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest"
+INSTALL_ENV_VARS="${INSTALL_ENV_VARS:-}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/YOUR_USERNAME/dotfiles.git}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
 TARGET_DIR=""
 
@@ -17,12 +17,12 @@ usage() {
   cat << 'EOF'
 Usage: apply [OPTIONS] [TARGET_DIR]
 
-Apply the pickles devcontainer template to a project directory.
+Apply the dotfiles devcontainer template to a project directory.
 
-This script detects whether it's running from within the pickled-devcontainer
+This script detects whether it's running from within the dotfiles-devcontainer
 repository or from elsewhere (e.g., curl | bash) and adjusts its behavior:
 
-  - From repo: Uses local template files from src/pickles/
+  - From repo: Uses local template files from src/dotfiles/
   - From elsewhere: Uses published template from GHCR
 
 ARGUMENTS:
@@ -30,14 +30,14 @@ ARGUMENTS:
                      Use "." for current directory
 
 OPTIONS:
-  --role ROLE        Role for dotfiles configuration (default: devcontainer)
-                     Options: devcontainer, personal, work
-  --repo URL         Dotfiles repository URL (default: technicalpickles/dotfiles)
+  --env KEY=VALUE    Environment variable to set before running dotfiles install.sh
+                     Can be specified multiple times
+  --repo URL         Dotfiles repository URL (default: YOUR_USERNAME/dotfiles)
   --branch BRANCH    Dotfiles branch (default: main)
   -h, --help         Show this help message
 
 ENVIRONMENT VARIABLES:
-  ROLE               Same as --role
+  INSTALL_ENV_VARS   Environment variables in KEY1=value1,KEY2=value2 format
   DOTFILES_REPO      Same as --repo
   DOTFILES_BRANCH    Same as --branch
 
@@ -48,23 +48,26 @@ EXAMPLES:
   # Apply to a specific project directory
   bin/apply ~/projects/my-app
 
-  # Use custom dotfiles
-  bin/apply --repo https://github.com/myuser/dotfiles.git --branch main .
+  # Use custom dotfiles with environment variables
+  bin/apply --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
 
-  # Use work profile
-  bin/apply --role work ~/work/project
+  # Multiple environment variables
+  bin/apply --env ROLE=work --env ENV=production ~/work/project
 
   # Via curl (uses published template)
-  curl -fsSL https://raw.githubusercontent.com/technicalpickles/pickled-devcontainer/main/bin/apply | bash -s -- .
+  curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- .
 
 WORKFLOW:
-  1. Detects if running from pickled-devcontainer repo or standalone
+  1. Detects if running from dotfiles-devcontainer repo or standalone
   2. Installs @devcontainers/cli if not present
   3. Applies template with specified options
   4. Creates .devcontainer/ configuration in target directory
 
 EOF
 }
+
+# Declare associative array for environment variables
+declare -A ENV_VARS
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -73,8 +76,14 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    --role)
-      ROLE="$2"
+    --env)
+      # Parse KEY=VALUE and add to associative array
+      if [[ "$2" =~ ^([^=]+)=(.*)$ ]]; then
+        ENV_VARS["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+      else
+        echo "Error: --env requires KEY=VALUE format, got: $2" >&2
+        exit 1
+      fi
       shift 2
       ;;
     --repo)
@@ -108,20 +117,20 @@ TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
   exit 1
 }
 
-echo "Pickles Dev Container Template Applier"
-echo "======================================"
+echo "Dotfiles Dev Container Template Applier"
+echo "========================================"
 echo
 
 # Detect context: are we running from the repo or standalone?
 IS_IN_REPO=false
-if [[ -f "$REPO_ROOT/src/pickles/devcontainer-template.json" ]]; then
+if [[ -f "$REPO_ROOT/src/dotfiles/devcontainer-template.json" ]]; then
   IS_IN_REPO=true
 fi
 
 if [[ "$IS_IN_REPO" == "true" ]]; then
-  echo "📦 Running from pickled-devcontainer repository"
-  echo "   Will use local template files from: src/pickles/"
-  TEMPLATE_SOURCE="$REPO_ROOT/src/pickles"
+  echo "📦 Running from dotfiles-devcontainer repository"
+  echo "   Will use local template files from: src/dotfiles/"
+  TEMPLATE_SOURCE="$REPO_ROOT/src/dotfiles"
 else
   echo "🌐 Running standalone (not in repo)"
   echo "   Will use published template: $TEMPLATE_ID"
@@ -131,9 +140,14 @@ fi
 echo
 echo "Configuration:"
 echo "  Target directory: $TARGET_DIR"
-echo "  Role: $ROLE"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
+if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
+  echo "  Environment variables:"
+  for key in "${!ENV_VARS[@]}"; do
+    echo "    $key=${ENV_VARS[$key]}"
+  done
+fi
 echo
 
 # Check if devcontainer CLI is installed
@@ -195,14 +209,32 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   # Replace template options with actual values
   echo "🔧 Configuring template options..."
 
+  # Build containerEnv JSON for environment variables
+  if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
+    CONTAINER_ENV_JSON="{"
+    FIRST=true
+    for key in "${!ENV_VARS[@]}"; do
+      if [[ "$FIRST" == "true" ]]; then
+        FIRST=false
+      else
+        CONTAINER_ENV_JSON+=","
+      fi
+      # Properly escape JSON values
+      VALUE=$(printf '%s' "${ENV_VARS[$key]}" | jq -R .)
+      CONTAINER_ENV_JSON+="\"$key\":$VALUE"
+    done
+    CONTAINER_ENV_JSON+="}"
+  else
+    CONTAINER_ENV_JSON="{}"
+  fi
+
   # Replace placeholders in devcontainer.json
-  sed -i.bak "s|\${templateOption:role}|$ROLE|g" .devcontainer/devcontainer.json
+  sed -i.bak "s|\${templateOption:installEnvVars}|$CONTAINER_ENV_JSON|g" .devcontainer/devcontainer.json
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/devcontainer.json
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/devcontainer.json
   rm .devcontainer/devcontainer.json.bak
 
   # Replace placeholders in Dockerfile
-  sed -i.bak "s|\${templateOption:role}|$ROLE|g" .devcontainer/Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/Dockerfile
   rm .devcontainer/Dockerfile.bak
@@ -210,17 +242,35 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   echo "✓ Template files copied and configured"
 else
   # Running standalone - use devcontainer CLI with published template
+  # Build template args for environment variables
+  ENV_ARGS=""
+  if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
+    ENV_JSON="{"
+    FIRST=true
+    for key in "${!ENV_VARS[@]}"; do
+      if [[ "$FIRST" == "true" ]]; then
+        FIRST=false
+      else
+        ENV_JSON+=","
+      fi
+      VALUE=$(printf '%s' "${ENV_VARS[$key]}" | jq -R .)
+      ENV_JSON+="\"$key\":$VALUE"
+    done
+    ENV_JSON+="}"
+    ENV_ARGS="--template-args installEnvVars='$ENV_JSON'"
+  fi
+
   $DEVCONTAINER_CMD templates apply \
     --template-id "$TEMPLATE_ID" \
-    --template-args role="$ROLE" \
     --template-args dotfilesRepo="$DOTFILES_REPO" \
-    --template-args dotfilesBranch="$DOTFILES_BRANCH"
+    --template-args dotfilesBranch="$DOTFILES_BRANCH" \
+    $ENV_ARGS
 
   echo "✓ Template applied via devcontainer CLI"
 fi
 
 echo
-echo "✅ Success! Pickles devcontainer template has been applied."
+echo "✅ Success! Dotfiles devcontainer template has been applied."
 echo
 echo "Next steps:"
 echo "  1. Review the configuration in .devcontainer/"
@@ -229,5 +279,5 @@ echo "  3. Press Cmd+Shift+P and select 'Dev Containers: Reopen in Container'"
 echo
 echo "For better performance on macOS, consider using:"
 echo "  'Dev Containers: Clone Repository in Container Volume...'"
-echo "  See: https://github.com/technicalpickles/pickled-devcontainer#macos-performance-optimization"
+echo "  See: https://github.com/technicalpickles/dotfiles-devcontainer#macos-performance-optimization"
 echo

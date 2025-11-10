@@ -12,7 +12,7 @@ jobs:
         id: filter
         with:
           filters: |
-            pickles: ./**/pickles/**
+            dotfiles: ./**/dotfiles/**
 
   test:
     needs: [detect-changes]

@@ -38,21 +38,18 @@ RUN curl https://mise.run | sh
 # Install starship
 RUN curl -sS https://starship.rs/install.sh | sh -s -- --force
 
-# Set role for dotfiles installation
-ARG DOTPICKLES_ROLE=devcontainer
-ENV DOTPICKLES_ROLE=${DOTPICKLES_ROLE}
-
 # Switch to vscode user
 USER vscode
 WORKDIR /home/vscode
 
 # Clone dotfiles repository
-ARG DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git
+ARG DOTFILES_REPO=https://github.com/YOUR_USERNAME/dotfiles.git
 ARG DOTFILES_BRANCH=main
-RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.pickles
+RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.dotfiles
 
 # Run dotfiles installation
-RUN cd /home/vscode/.pickles && bash install.sh
+# Note: Custom environment variables will be set at container runtime via containerEnv
+RUN cd /home/vscode/.dotfiles && bash install.sh
 
 # Set fish as default shell for vscode user
 USER root

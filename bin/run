@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TEMPLATE_ID="${1:-pickles}"
+TEMPLATE_ID="${1:-dotfiles}"
 shift || true
 
 usage() {
@@ -16,22 +16,22 @@ Usage: $(basename "$0") [TEMPLATE_ID] [COMMAND]
 Execute commands or run tests in the template container.
 
 ARGUMENTS:
-  TEMPLATE_ID    Template to run (default: pickles)
+  TEMPLATE_ID    Template to run (default: dotfiles)
   COMMAND        Command to execute (default: run tests)
 
 OPTIONS:
   -h, --help     Show this help message
 
 EXAMPLES:
-  # Run tests for pickles template
+  # Run tests for dotfiles template
   $(basename "$0")
-  $(basename "$0") pickles
+  $(basename "$0") dotfiles
 
   # Open a fish shell
-  $(basename "$0") pickles fish
+  $(basename "$0") dotfiles fish
 
   # Run a custom command
-  $(basename "$0") pickles "ls -la"
+  $(basename "$0") dotfiles "ls -la"
 
 WORKFLOW:
   The container must already be running (use 'bin/build' first).

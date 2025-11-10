@@ -1,0 +1,30 @@
+{
+  "id": "dotfiles",
+  "version": "1.0.0",
+  "name": "Dotfiles Dev Environment",
+  "description": "A dev environment with your dotfiles pre-installed",
+  "documentationURL": "https://github.com/technicalpickles/dotfiles-devcontainer",
+  "options": {
+    "dotfilesRepo": {
+      "type": "string",
+      "description": "Dotfiles repository URL",
+      "default": "https://github.com/YOUR_USERNAME/dotfiles.git"
+    },
+    "dotfilesBranch": {
+      "type": "string",
+      "description": "Dotfiles repository branch",
+      "default": "main"
+    },
+    "installEnvVars": {
+      "type": "object",
+      "description": "Environment variables to set before running install.sh",
+      "default": {},
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "platforms": [
+    "Any"
+  ]
+}

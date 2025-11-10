@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build the pickles devcontainer template
+# Build the dotfiles devcontainer template
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TEMPLATE_ID="${1:-pickles}"
+TEMPLATE_ID="${1:-dotfiles}"
 
 usage() {
   cat << EOF
@@ -15,15 +15,15 @@ Usage: $(basename "$0") [TEMPLATE_ID]
 Build a devcontainer template for testing.
 
 ARGUMENTS:
-  TEMPLATE_ID    Template to build (default: pickles)
+  TEMPLATE_ID    Template to build (default: dotfiles)
 
 OPTIONS:
   -h, --help     Show this help message
 
 EXAMPLES:
-  # Build the pickles template
+  # Build the dotfiles template
   $(basename "$0")
-  $(basename "$0") pickles
+  $(basename "$0") dotfiles
 
 WORKFLOW:
   This script mimics the GitHub Actions smoke-test workflow:

@@ -1,6 +1,6 @@
-# Pickled Dev Container
+# Dotfiles Dev Container
 
-A [Dev Container Template](https://containers.dev/templates) that provides a pre-configured development environment with Josh's dotfiles ([pickles](https://github.com/technicalpickles/dotfiles)) pre-installed. This gives you a consistent development environment with your favorite shell, tools, and configurations ready to go.
+A [Dev Container Template](https://containers.dev/templates) that provides a pre-configured development environment with your dotfiles pre-installed. This gives you a consistent development environment with your favorite shell, tools, and configurations ready to go.
 
 ## What is This?
 
@@ -29,11 +29,11 @@ The template is designed to work with any project - it layers your personal deve
    - Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
    - Select "Dev Containers: Add Dev Container Configuration Files..."
    - Choose "Add configuration to workspace"
-   - Search for "Pickled Dev Environment" and select it
+   - Search for "Dotfiles Dev Environment" and select it
    - Configure your options:
-     - **Role**: Choose `devcontainer`, `personal`, or `work`
      - **Dotfiles Repo**: URL to your dotfiles repository
      - **Dotfiles Branch**: Branch to use (usually `main`)
+     - **Environment Variables**: Optional key-value pairs to pass to your install script
 
 3. **Open in Container**:
    - Press `Cmd+Shift+P` / `Ctrl+Shift+P`
@@ -48,11 +48,11 @@ Use the `bin/apply` helper script for the easiest setup:
 
 ```bash
 # From this repository (if cloned locally)
-cd /path/to/pickled-devcontainer
+cd /path/to/dotfiles-devcontainer
 ./bin/apply /path/to/your/project
 
 # Or via curl (one-liner)
-curl -fsSL https://raw.githubusercontent.com/technicalpickles/pickled-devcontainer/main/bin/apply | bash -s -- /path/to/your/project
+curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- /path/to/your/project
 ```
 
 The script automatically:
@@ -63,15 +63,16 @@ The script automatically:
 
 **Custom options:**
 ```bash
-# Use custom dotfiles and role
+# Use custom dotfiles with environment variables
 ./bin/apply \
-  --role work \
   --repo https://github.com/YOUR_USERNAME/dotfiles.git \
   --branch main \
+  --env DOTFILES_ROLE=devcontainer \
+  --env CUSTOM_VAR=value \
   /path/to/your/project
 
 # Or with environment variables
-ROLE=personal DOTFILES_REPO=https://github.com/me/dots.git ./bin/apply .
+DOTFILES_REPO=https://github.com/me/dots.git ./bin/apply .
 ```
 
 #### Manual CLI Application
@@ -87,9 +88,8 @@ cd /path/to/your/project
 
 # Apply the template
 devcontainer templates apply \
-  --template-id ghcr.io/technicalpickles/pickled-devcontainer/pickles:latest \
-  --template-args role=devcontainer \
-  --template-args dotfilesRepo=https://github.com/technicalpickles/dotfiles.git \
+  --template-id ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest \
+  --template-args dotfilesRepo=https://github.com/YOUR_USERNAME/dotfiles.git \
   --template-args dotfilesBranch=main
 
 # Build and start the container
@@ -98,7 +98,7 @@ devcontainer up --workspace-folder .
 
 ### Using Your Own Dotfiles
 
-To use your own dotfiles instead of the defaults:
+To use your own dotfiles:
 
 **Via VS Code**: Configure the options when adding the template to specify your repository URL and branch.
 
@@ -107,8 +107,7 @@ To use your own dotfiles instead of the defaults:
 **Via CLI**: Use the `--template-args` flag:
 ```bash
 devcontainer templates apply \
-  --template-id ghcr.io/technicalpickles/pickled-devcontainer/pickles:latest \
-  --template-args role=personal \
+  --template-id ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest \
   --template-args dotfilesRepo=https://github.com/YOUR_USERNAME/dotfiles.git \
   --template-args dotfilesBranch=main
 ```
@@ -127,12 +126,12 @@ This is the optimal workflow for macOS users to get maximum performance:
 4. **Enter** your repository URL (e.g., `https://github.com/username/repo.git`)
 5. **Choose a template**:
    - Select "Show All Definitions..."
-   - Search for "Pickled Dev Environment"
+   - Search for "Dotfiles Dev Environment"
    - Select it
 6. **Configure** your dotfiles options:
-   - **Role**: Choose `devcontainer`, `personal`, or `work`
    - **Dotfiles Repo**: Your dotfiles repository URL
    - **Dotfiles Branch**: Branch to use (usually `main`)
+   - **Environment Variables**: Optional settings for your dotfiles install script
 7. **Wait** for VS Code to:
    - Create a Docker volume
    - Clone your repository into the volume
@@ -195,11 +194,21 @@ docker cp <container-id>:/workspaces/project ./local-backup
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `role` | Environment role for dotfiles configuration | `devcontainer` |
-| `dotfilesRepo` | Git URL of your dotfiles repository | `https://github.com/technicalpickles/dotfiles.git` |
+| `dotfilesRepo` | Git URL of your dotfiles repository | `https://github.com/YOUR_USERNAME/dotfiles.git` |
 | `dotfilesBranch` | Branch to use from dotfiles repo | `main` |
+| `installEnvVars` | Key-value pairs of environment variables to set before running install.sh | `{}` |
 
-The `role` option is passed to your dotfiles' `install.sh` script as the `DOTPICKLES_ROLE` environment variable, allowing you to customize installation based on context (personal vs work vs devcontainer).
+The `installEnvVars` option allows you to pass environment variables to your dotfiles' `install.sh` script, allowing you to customize installation based on context (personal vs work vs devcontainer).
+
+Example:
+```json
+{
+  "installEnvVars": {
+    "DOTFILES_ROLE": "devcontainer",
+    "ENVIRONMENT": "work"
+  }
+}
+```
 
 ## What's Included
 
@@ -233,7 +242,7 @@ This repository includes several helper scripts in the `bin/` directory:
 ./bin/apply /path/to/your/project
 
 # With custom options
-./bin/apply --role work --repo https://github.com/user/dots.git ~/project
+./bin/apply --repo https://github.com/user/dots.git --env ROLE=work ~/project
 
 # View all options
 ./bin/apply --help
@@ -245,7 +254,7 @@ This repository includes several helper scripts in the `bin/` directory:
 ./bin/build
 
 # Build specific template
-./bin/build pickles
+./bin/build dotfiles
 ```
 
 **bin/run** - Run the built container
@@ -265,14 +274,14 @@ This repository includes several helper scripts in the `bin/` directory:
 ```
 .
 ├── src/
-│   └── pickles/                    # The template
+│   └── dotfiles/                    # The template
 │       ├── devcontainer-template.json  # Template metadata and options
 │       └── .devcontainer/
 │           ├── devcontainer.json   # Container configuration
 │           ├── Dockerfile          # Container image definition
 │           └── post-create.sh      # Post-creation setup script
 ├── test/
-│   └── pickles/
+│   └── dotfiles/
 │       └── test.sh                 # Template tests
 ├── bin/
 │   ├── apply                       # Apply template to a project
@@ -286,9 +295,9 @@ This repository includes several helper scripts in the `bin/` directory:
 
 This template is published to GitHub Container Registry (GHCR) automatically via GitHub Actions when you push changes:
 
-1. Make changes to files in `src/pickles/`
+1. Make changes to files in `src/dotfiles/`
 2. Commit and push to main
-3. GitHub Actions builds and publishes to: `ghcr.io/technicalpickles/pickled-devcontainer/pickles:latest`
+3. GitHub Actions builds and publishes to: `ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest`
 
 Users can then pull the latest version when they create or update their dev containers.
 
@@ -296,7 +305,7 @@ Users can then pull the latest version when they create or update their dev cont
 
 ### Extending the Dockerfile
 
-Add additional tools by editing [src/pickles/.devcontainer/Dockerfile](src/pickles/.devcontainer/Dockerfile):
+Add additional tools by editing [src/dotfiles/.devcontainer/Dockerfile](src/dotfiles/.devcontainer/Dockerfile):
 
 ```dockerfile
 # Add your custom tools
@@ -307,7 +316,7 @@ RUN apt-get update && apt-get install -y \
 
 ### Adding VS Code Extensions
 
-Edit [src/pickles/.devcontainer/devcontainer.json](src/pickles/.devcontainer/devcontainer.json):
+Edit [src/dotfiles/.devcontainer/devcontainer.json](src/dotfiles/.devcontainer/devcontainer.json):
 
 ```jsonc
 {
@@ -324,7 +333,7 @@ Edit [src/pickles/.devcontainer/devcontainer.json](src/pickles/.devcontainer/dev
 
 ### Customizing Post-Creation Steps
 
-Edit [src/pickles/.devcontainer/post-create.sh](src/pickles/.devcontainer/post-create.sh) to add setup steps that run after the container is created:
+Edit [src/dotfiles/.devcontainer/post-create.sh](src/dotfiles/.devcontainer/post-create.sh) to add setup steps that run after the container is created:
 
 ```bash
 #!/usr/bin/env bash
@@ -368,4 +377,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Dev Container Templates Specification](https://containers.dev/implementors/templates)
 - [Dev Containers Documentation](https://containers.dev/)
 - [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers)
-- [Pickles Dotfiles](https://github.com/technicalpickles/dotfiles)
