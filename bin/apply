@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+# Apply the pickles devcontainer template to a project
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Default values
+TEMPLATE_ID="ghcr.io/technicalpickles/pickled-devcontainer/pickles:latest"
+ROLE="${ROLE:-devcontainer}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
+DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
+TARGET_DIR=""
+
+usage() {
+  cat << 'EOF'
+Usage: apply [OPTIONS] [TARGET_DIR]
+
+Apply the pickles devcontainer template to a project directory.
+
+This script detects whether it's running from within the pickled-devcontainer
+repository or from elsewhere (e.g., curl | bash) and adjusts its behavior:
+
+  - From repo: Uses local template files from src/pickles/
+  - From elsewhere: Uses published template from GHCR
+
+ARGUMENTS:
+  TARGET_DIR         Target directory to apply template to (default: current directory)
+                     Use "." for current directory
+
+OPTIONS:
+  --role ROLE        Role for dotfiles configuration (default: devcontainer)
+                     Options: devcontainer, personal, work
+  --repo URL         Dotfiles repository URL (default: technicalpickles/dotfiles)
+  --branch BRANCH    Dotfiles branch (default: main)
+  -h, --help         Show this help message
+
+ENVIRONMENT VARIABLES:
+  ROLE               Same as --role
+  DOTFILES_REPO      Same as --repo
+  DOTFILES_BRANCH    Same as --branch
+
+EXAMPLES:
+  # Apply to current directory with defaults
+  bin/apply .
+
+  # Apply to a specific project directory
+  bin/apply ~/projects/my-app
+
+  # Use custom dotfiles
+  bin/apply --repo https://github.com/myuser/dotfiles.git --branch main .
+
+  # Use work profile
+  bin/apply --role work ~/work/project
+
+  # Via curl (uses published template)
+  curl -fsSL https://raw.githubusercontent.com/technicalpickles/pickled-devcontainer/main/bin/apply | bash -s -- .
+
+WORKFLOW:
+  1. Detects if running from pickled-devcontainer repo or standalone
+  2. Installs @devcontainers/cli if not present
+  3. Applies template with specified options
+  4. Creates .devcontainer/ configuration in target directory
+
+EOF
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --role)
+      ROLE="$2"
+      shift 2
+      ;;
+    --repo)
+      DOTFILES_REPO="$2"
+      shift 2
+      ;;
+    --branch)
+      DOTFILES_BRANCH="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Error: Unknown option: $1" >&2
+      echo "Use --help for usage information" >&2
+      exit 1
+      ;;
+    *)
+      TARGET_DIR="$1"
+      shift
+      ;;
+  esac
+done
+
+# Default to current directory if not specified
+if [[ -z "$TARGET_DIR" ]]; then
+  TARGET_DIR="."
+fi
+
+# Convert to absolute path
+TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
+  echo "Error: Target directory does not exist: $TARGET_DIR" >&2
+  exit 1
+}
+
+echo "Pickles Dev Container Template Applier"
+echo "======================================"
+echo
+
+# Detect context: are we running from the repo or standalone?
+IS_IN_REPO=false
+if [[ -f "$REPO_ROOT/src/pickles/devcontainer-template.json" ]]; then
+  IS_IN_REPO=true
+fi
+
+if [[ "$IS_IN_REPO" == "true" ]]; then
+  echo "📦 Running from pickled-devcontainer repository"
+  echo "   Will use local template files from: src/pickles/"
+  TEMPLATE_SOURCE="$REPO_ROOT/src/pickles"
+else
+  echo "🌐 Running standalone (not in repo)"
+  echo "   Will use published template: $TEMPLATE_ID"
+  TEMPLATE_SOURCE="$TEMPLATE_ID"
+fi
+
+echo
+echo "Configuration:"
+echo "  Target directory: $TARGET_DIR"
+echo "  Role: $ROLE"
+echo "  Dotfiles repo: $DOTFILES_REPO"
+echo "  Dotfiles branch: $DOTFILES_BRANCH"
+echo
+
+# Check if devcontainer CLI is installed
+if ! command -v devcontainer &> /dev/null; then
+  echo "⚠️  devcontainer CLI not found"
+  echo "📦 Installing @devcontainers/cli..."
+
+  # Check if npx is available
+  if command -v npx &> /dev/null; then
+    echo "   Using npx (no installation needed)"
+    DEVCONTAINER_CMD="npx --yes @devcontainers/cli"
+  elif command -v npm &> /dev/null; then
+    echo "   Installing globally with npm..."
+    npm install -g @devcontainers/cli
+    DEVCONTAINER_CMD="devcontainer"
+  else
+    echo "Error: Neither npx nor npm found. Please install Node.js first:" >&2
+    echo "  https://nodejs.org/" >&2
+    exit 1
+  fi
+else
+  echo "✓ devcontainer CLI found"
+  DEVCONTAINER_CMD="devcontainer"
+fi
+
+echo
+
+# Check if target directory already has devcontainer config
+if [[ -d "$TARGET_DIR/.devcontainer" ]]; then
+  echo "⚠️  Warning: .devcontainer/ already exists in target directory"
+  read -p "   Do you want to overwrite it? (y/N) " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted."
+    exit 1
+  fi
+  echo "   Will overwrite existing configuration"
+  echo
+fi
+
+# Apply the template
+echo "🚀 Applying template to: $TARGET_DIR"
+echo
+
+cd "$TARGET_DIR"
+
+if [[ "$IS_IN_REPO" == "true" ]]; then
+  # Running from repo - copy files manually since we can't use templates apply with local path
+  echo "📋 Copying template files..."
+
+  # Create .devcontainer directory
+  mkdir -p .devcontainer
+
+  # Copy devcontainer files
+  cp "$TEMPLATE_SOURCE/.devcontainer/devcontainer.json" .devcontainer/
+  cp "$TEMPLATE_SOURCE/.devcontainer/Dockerfile" .devcontainer/
+  cp "$TEMPLATE_SOURCE/.devcontainer/post-create.sh" .devcontainer/
+
+  # Replace template options with actual values
+  echo "🔧 Configuring template options..."
+
+  # Replace placeholders in devcontainer.json
+  sed -i.bak "s|\${templateOption:role}|$ROLE|g" .devcontainer/devcontainer.json
+  sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/devcontainer.json
+  sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/devcontainer.json
+  rm .devcontainer/devcontainer.json.bak
+
+  # Replace placeholders in Dockerfile
+  sed -i.bak "s|\${templateOption:role}|$ROLE|g" .devcontainer/Dockerfile
+  sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/Dockerfile
+  sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/Dockerfile
+  rm .devcontainer/Dockerfile.bak
+
+  echo "✓ Template files copied and configured"
+else
+  # Running standalone - use devcontainer CLI with published template
+  $DEVCONTAINER_CMD templates apply \
+    --template-id "$TEMPLATE_ID" \
+    --template-args role="$ROLE" \
+    --template-args dotfilesRepo="$DOTFILES_REPO" \
+    --template-args dotfilesBranch="$DOTFILES_BRANCH"
+
+  echo "✓ Template applied via devcontainer CLI"
+fi
+
+echo
+echo "✅ Success! Pickles devcontainer template has been applied."
+echo
+echo "Next steps:"
+echo "  1. Review the configuration in .devcontainer/"
+echo "  2. Open this directory in VS Code"
+echo "  3. Press Cmd+Shift+P and select 'Dev Containers: Reopen in Container'"
+echo
+echo "For better performance on macOS, consider using:"
+echo "  'Dev Containers: Clone Repository in Container Volume...'"
+echo "  See: https://github.com/technicalpickles/pickled-devcontainer#macos-performance-optimization"
+echo
