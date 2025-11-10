@@ -230,6 +230,12 @@ Example:
 - Prettier extension pre-installed
 - Configured terminal profiles
 
+### AWS Integration
+- AWS CLI pre-installed
+- Read-only mount of host's `~/.aws` directory
+- Supports AWS SSO authentication (run `aws sso login` on host)
+- Credentials automatically available to container tools
+
 ## Development Workflow
 
 ### Helper Scripts
@@ -340,6 +346,55 @@ Edit [src/dotfiles/.devcontainer/post-create.sh](src/dotfiles/.devcontainer/post
 # Your custom setup steps here
 ```
 
+## AWS Authentication Workflow
+
+This template includes AWS SSO integration for seamless access to AWS services from within the container.
+
+### How It Works
+
+The container mounts your Mac's `~/.aws` directory as read-only, giving container tools access to your AWS credentials without managing separate authentication.
+
+### Usage
+
+1. **Authenticate on your Mac** (outside container):
+   ```bash
+   aws sso login
+   ```
+   This opens your browser for SSO authentication and caches credentials in `~/.aws/`.
+
+2. **Work in the container**:
+   - Open your project in the dev container
+   - AWS CLI and SDKs automatically use your cached credentials
+   - Tools like Claude (via Bedrock) work seamlessly
+
+3. **When credentials expire** (typically a few times per day):
+   - Exit container or open a host terminal
+   - Run `aws sso login` on your Mac
+   - Return to container - new credentials immediately available
+
+### What Works
+
+- ✅ AWS CLI commands (`aws s3 ls`, `aws sts get-caller-identity`, etc.)
+- ✅ AWS SDKs (boto3, aws-sdk-js, etc.)
+- ✅ Tools using AWS services (Claude via Bedrock, deployment scripts, etc.)
+- ✅ Works with your default AWS profile
+
+### Limitations
+
+- ❌ Cannot run `aws sso login` from inside container (requires browser on host)
+- ❌ Cannot modify `~/.aws/config` from inside container (read-only mount)
+
+When credentials expire, tools will show standard AWS authentication errors - this is your signal to run `aws sso login` on the host.
+
+### Profile Switching
+
+If you need to use a different AWS profile, set the `AWS_PROFILE` environment variable in your container terminal:
+
+```bash
+export AWS_PROFILE=admin-biztech
+aws sts get-caller-identity
+```
+
 ## Troubleshooting
 
 ### Container Build Fails
@@ -355,6 +410,13 @@ Edit [src/dotfiles/.devcontainer/post-create.sh](src/dotfiles/.devcontainer/post
 ### Slow Performance on macOS
 - See [macOS Performance Optimization](#macos-performance-optimization) section above
 - Consider using named volumes instead of bind mounts
+
+### AWS Credentials Not Working
+- Verify `aws sso login` succeeded on your host Mac
+- Check credential files exist: `ls ~/.aws/sso/cache/`
+- Ensure credentials haven't expired (run `aws sts get-caller-identity` on host)
+- Try re-running `aws sso login` on your Mac
+- Note: The container automatically creates `~/.aws` on your host if it doesn't exist
 
 ### Permission Errors
 - The container runs as the `vscode` user (non-root)

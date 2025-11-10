@@ -16,5 +16,6 @@
 			]
 		}
 	},
-	"postCreateCommand": "npm install -g @devcontainers/cli"
+	"postCreateCommand": "npm install -g @devcontainers/cli",
+	"initializeCommand": "mkdir -p ${localEnv:HOME}/.aws"
 }
