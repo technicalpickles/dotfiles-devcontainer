@@ -9,9 +9,138 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Default values
 TEMPLATE_ID="ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest"
 INSTALL_ENV_VARS="${INSTALL_ENV_VARS:-}"
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/YOUR_USERNAME/dotfiles.git}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
 TARGET_DIR=""
+VERBOSE="${VERBOSE:-false}"
+DOTFILES_REPO_EXPLICIT=false
+
+# Normalize git URLs from SSH to HTTPS format
+normalize_git_url() {
+  local url="$1"
+  # Convert SSH to HTTPS: git@github.com:user/repo.git -> https://github.com/user/repo.git
+  if [[ "$url" =~ ^git@([^:]+):(.+)$ ]]; then
+    echo "https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  else
+    echo "$url"
+  fi
+}
+
+# Detect dotfiles repository from multiple sources
+detect_dotfiles_repo() {
+  local DETECTED_REPO_ENV=""
+  local DETECTED_REPO_GITCONFIG=""
+  local DETECTED_REPO_LOCAL=""
+  local DETECTED_USER_GH=""
+
+  [[ "$VERBOSE" == "true" ]] && echo "🔍 Auto-detecting dotfiles repository..."
+
+  # Source 1: Environment variable (already captured in DOTFILES_REPO)
+  if [[ -n "${DOTFILES_REPO:-}" && "$DOTFILES_REPO" != "https://github.com/technicalpickles/dotfiles.git" ]]; then
+    DETECTED_REPO_ENV="$DOTFILES_REPO"
+    [[ "$VERBOSE" == "true" ]] && echo "   • Found via \$DOTFILES_REPO: $DETECTED_REPO_ENV"
+  fi
+
+  # Source 2: Git config github.user
+  if command -v git &> /dev/null; then
+    local github_user
+    github_user=$(git config --get github.user 2>/dev/null || echo "")
+    if [[ -n "$github_user" ]]; then
+      DETECTED_REPO_GITCONFIG="https://github.com/${github_user}/dotfiles.git"
+      [[ "$VERBOSE" == "true" ]] && echo "   • Found via git config: $DETECTED_REPO_GITCONFIG"
+    fi
+  fi
+
+  # Source 3: Local dotfiles directories
+  for local_path in "$HOME/dotfiles" "$HOME/.dotfiles"; do
+    if [[ -d "$local_path/.git" ]]; then
+      local remote_url
+      remote_url=$(cd "$local_path" && git config --get remote.origin.url 2>/dev/null || echo "")
+      if [[ -n "$remote_url" ]]; then
+        DETECTED_REPO_LOCAL=$(normalize_git_url "$remote_url")
+        [[ "$VERBOSE" == "true" ]] && echo "   • Found via local ${local_path}: $DETECTED_REPO_LOCAL"
+        break  # Prefer ~/dotfiles over ~/.dotfiles
+      fi
+    fi
+  done
+
+  # Source 4: GitHub CLI authenticated user
+  if command -v gh &> /dev/null; then
+    local gh_user
+    gh_user=$(gh auth status 2>&1 | grep "Logged in" | sed -n 's/.*account \([^ ]*\).*/\1/p' || echo "")
+    if [[ -n "$gh_user" ]]; then
+      DETECTED_USER_GH="$gh_user"
+      [[ "$VERBOSE" == "true" ]] && echo "   • Found via gh auth: $DETECTED_USER_GH"
+    fi
+  fi
+
+  # Decision heuristics
+  local CHOSEN_REPO=""
+  local DETECTION_METHOD=""
+  local HAS_INCONSISTENCY=false
+  local INCONSISTENCY_MESSAGE=""
+
+  # Check for consistency between sources
+  local consistent_repo=""
+  if [[ -n "$DETECTED_REPO_LOCAL" && -n "$DETECTED_REPO_GITCONFIG" && "$DETECTED_REPO_LOCAL" == "$DETECTED_REPO_GITCONFIG" ]]; then
+    consistent_repo="$DETECTED_REPO_LOCAL"
+    DETECTION_METHOD="git config and local repo (validated)"
+  fi
+
+  # Validate with gh auth if available
+  if [[ -n "$DETECTED_USER_GH" ]]; then
+    local gh_repo="https://github.com/${DETECTED_USER_GH}/dotfiles.git"
+    if [[ -n "$consistent_repo" && "$consistent_repo" == "$gh_repo" ]]; then
+      DETECTION_METHOD="authenticated source (all sources match)"
+    elif [[ -z "$consistent_repo" ]]; then
+      consistent_repo="$gh_repo"
+      DETECTION_METHOD="authenticated source (gh auth)"
+    fi
+  fi
+
+  # Detect inconsistencies
+  if [[ -n "$DETECTED_REPO_GITCONFIG" && -n "$DETECTED_REPO_LOCAL" && "$DETECTED_REPO_GITCONFIG" != "$DETECTED_REPO_LOCAL" ]]; then
+    HAS_INCONSISTENCY=true
+    INCONSISTENCY_MESSAGE="   ⚠️  Multiple dotfiles repos detected:\n       - git config: $DETECTED_REPO_GITCONFIG\n       - local ~/dotfiles: $DETECTED_REPO_LOCAL"
+  fi
+
+  # Priority when inconsistent: authenticated > git config > local
+  if [[ -n "$consistent_repo" ]]; then
+    CHOSEN_REPO="$consistent_repo"
+  elif [[ -n "$DETECTED_USER_GH" ]]; then
+    CHOSEN_REPO="https://github.com/${DETECTED_USER_GH}/dotfiles.git"
+    DETECTION_METHOD="authenticated source (gh auth)"
+  elif [[ -n "$DETECTED_REPO_GITCONFIG" ]]; then
+    CHOSEN_REPO="$DETECTED_REPO_GITCONFIG"
+    DETECTION_METHOD="git config"
+  elif [[ -n "$DETECTED_REPO_LOCAL" ]]; then
+    CHOSEN_REPO="$DETECTED_REPO_LOCAL"
+    DETECTION_METHOD="local repository"
+  fi
+
+  # Output results
+  if [[ -n "$CHOSEN_REPO" ]]; then
+    if [[ "$VERBOSE" != "true" ]]; then
+      echo "🔍 Auto-detecting dotfiles repository..."
+    fi
+
+    if [[ "$HAS_INCONSISTENCY" == "true" ]]; then
+      echo -e "$INCONSISTENCY_MESSAGE"
+      echo "   Using $DETECTION_METHOD: $CHOSEN_REPO"
+      echo "   (Set \$DOTFILES_REPO or use --repo to override)"
+    else
+      echo "   ✓ Found via $DETECTION_METHOD: $CHOSEN_REPO"
+      if [[ "$VERBOSE" == "true" && "$DETECTION_METHOD" == *"validated"* ]]; then
+        echo "   ✓ Validated: Local ~/dotfiles matches git config"
+      fi
+      echo "   Using: $CHOSEN_REPO"
+    fi
+
+    DOTFILES_REPO="$CHOSEN_REPO"
+  else
+    [[ "$VERBOSE" == "true" ]] && echo "   • No dotfiles repo detected, using template default"
+  fi
+}
 
 usage() {
   cat << 'EOF'
@@ -32,8 +161,9 @@ ARGUMENTS:
 OPTIONS:
   --env KEY=VALUE    Environment variable to set before running dotfiles install.sh
                      Can be specified multiple times
-  --repo URL         Dotfiles repository URL (default: YOUR_USERNAME/dotfiles)
+  --repo URL         Dotfiles repository URL (default: auto-detected)
   --branch BRANCH    Dotfiles branch (default: main)
+  --verbose          Show detailed detection information
   -h, --help         Show this help message
 
 ENVIRONMENT VARIABLES:
@@ -88,11 +218,16 @@ while [[ $# -gt 0 ]]; do
       ;;
     --repo)
       DOTFILES_REPO="$2"
+      DOTFILES_REPO_EXPLICIT=true
       shift 2
       ;;
     --branch)
       DOTFILES_BRANCH="$2"
       shift 2
+      ;;
+    --verbose)
+      VERBOSE="true"
+      shift
       ;;
     -*)
       echo "Error: Unknown option: $1" >&2
@@ -117,6 +252,23 @@ TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
   exit 1
 }
 
+# Track if repo was explicitly set (for auto-detection)
+DOTFILES_REPO_EXPLICIT=false
+if [[ -n "${DOTFILES_REPO:-}" && "$DOTFILES_REPO" != "https://github.com/technicalpickles/dotfiles.git" ]]; then
+  # Check if it was set via --repo flag or env var (not the default)
+  DOTFILES_REPO_EXPLICIT=true
+fi
+
+# Auto-detect dotfiles repo if not explicitly set
+if [[ "$DOTFILES_REPO_EXPLICIT" == "false" ]]; then
+  detect_dotfiles_repo
+else
+  # Explicit override was used
+  echo "🔍 Using explicitly specified dotfiles repository"
+  echo "   Repo: $DOTFILES_REPO"
+fi
+
+echo
 echo "Dotfiles Dev Container Template Applier"
 echo "========================================"
 echo
@@ -142,12 +294,15 @@ echo "Configuration:"
 echo "  Target directory: $TARGET_DIR"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
+# Temporarily disable unbound variable check for associative array
+set +u
 if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
   echo "  Environment variables:"
   for key in "${!ENV_VARS[@]}"; do
     echo "    $key=${ENV_VARS[$key]}"
   done
 fi
+set -u
 echo
 
 # Check if devcontainer CLI is installed
@@ -210,6 +365,7 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   echo "🔧 Configuring template options..."
 
   # Build containerEnv JSON for environment variables
+  set +u
   if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
     CONTAINER_ENV_JSON="{"
     FIRST=true
@@ -227,6 +383,7 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   else
     CONTAINER_ENV_JSON="{}"
   fi
+  set -u
 
   # Replace placeholders in devcontainer.json
   sed -i.bak "s|\${templateOption:installEnvVars}|$CONTAINER_ENV_JSON|g" .devcontainer/devcontainer.json
@@ -244,6 +401,7 @@ else
   # Running standalone - use devcontainer CLI with published template
   # Build template args for environment variables
   ENV_ARGS=""
+  set +u
   if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
     ENV_JSON="{"
     FIRST=true
@@ -259,6 +417,7 @@ else
     ENV_JSON+="}"
     ENV_ARGS="--template-args installEnvVars='$ENV_JSON'"
   fi
+  set -u
 
   $DEVCONTAINER_CMD templates apply \
     --template-id "$TEMPLATE_ID" \

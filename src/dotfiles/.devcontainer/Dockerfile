@@ -43,7 +43,7 @@ USER vscode
 WORKDIR /home/vscode
 
 # Clone dotfiles repository
-ARG DOTFILES_REPO=https://github.com/YOUR_USERNAME/dotfiles.git
+ARG DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git
 ARG DOTFILES_BRANCH=main
 RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.dotfiles
 
