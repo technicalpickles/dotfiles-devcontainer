@@ -1,0 +1,50 @@
+amends "package://github.com/jdx/hk/releases/download/v1.20.0/hk@1.20.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.20.0/hk@1.20.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    // Shell scripts
+    ["shellcheck"] = Builtins.shellcheck
+    ["shfmt"] = Builtins.shfmt
+
+    // Markdown files
+    ["markdown_lint"] = Builtins.markdown_lint
+
+    // YAML files
+    ["yamllint"] = Builtins.yamllint
+
+    // JSON files - prettier handles these
+    ["prettier"] = Builtins.prettier
+
+    // Check for common issues
+    ["check_merge_conflict"] = Builtins.check_merge_conflict
+    ["check_added_large_files"] = Builtins.check_added_large_files
+    ["trailing_whitespace"] = Builtins.trailing_whitespace
+    ["mixed_line_ending"] = Builtins.mixed_line_ending
+    ["detect_private_key"] = Builtins.detect_private_key
+
+    // Validate pkl config files
+    ["pkl"] {
+        glob = "*.pkl"
+        check = "mise exec -- pkl eval {{files}} >/dev/null"
+    }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true    // automatically modify files with available linter fixes
+        stash = "git" // stashes unstaged changes while running fix steps
+        steps = linters
+    }
+    // instead of pre-commit, you can instead define pre-push hooks
+    ["pre-push"] {
+        steps = linters
+    }
+    // "fix" and "check" are special steps for `hk fix` and `hk check` commands
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}
