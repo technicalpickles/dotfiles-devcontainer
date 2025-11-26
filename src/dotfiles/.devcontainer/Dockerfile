@@ -47,9 +47,10 @@ ARG DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git
 ARG DOTFILES_BRANCH=main
 RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.dotfiles
 
-# Run dotfiles installation
-# Note: Custom environment variables will be set at container runtime via containerEnv
-RUN cd /home/vscode/.dotfiles && bash install.sh
+# Accept DOCKER_BUILD as build arg so it's available during install
+ARG DOCKER_BUILD=true
+
+RUN cd /home/vscode/.dotfiles && DOCKER_BUILD=${DOCKER_BUILD} bash install.sh
 
 # Set fish as default shell for vscode user
 USER root

@@ -4,13 +4,14 @@
     "dockerfile": "Dockerfile",
     "args": {
       "DOTFILES_REPO": "${templateOption:dotfilesRepo}",
-      "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}"
+      "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}",
+      "DOCKER_BUILD": "true"
     }
   },
   "mounts": [
     "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,readonly"
   ],
-  "containerEnv": ${templateOption:installEnvVars},
+  "containerEnv": "${templateOption:installEnvVars}",
   // To use a named volume for better performance on macOS:
   // Uncomment the next two lines and comment out or remove them for bind mount mode
   // "workspaceMount": "source=${templateOption:volumeName},target=/workspaces/${localWorkspaceFolderBasename},type=volume",
@@ -22,9 +23,7 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": [
-        "esbenp.prettier-vscode"
-      ],
+      "extensions": ["esbenp.prettier-vscode"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "fish",
         "terminal.integrated.profiles.linux": {
