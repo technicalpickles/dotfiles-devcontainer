@@ -49,8 +49,8 @@
   - Push the exact image that was tested (build → test → push without rebuild). ✅
 - **Renovate:**
   - Pin upstream base image digest in the base Dockerfile. ✅
-  - Configure Renovate to monitor that digest and open PRs when it changes (pattern from `technicalpickles/agentic-container`).
-  - Rebuild image on Renovate PRs for security refresh.
+  - Configure Renovate to monitor that digest and open PRs when it changes (pattern from `technicalpickles/agentic-container`). ✅
+  - Rebuild image on Renovate PRs for security refresh (base-image-ci should run on digest bump PRs; merge after green).
 
 ## Testing
 

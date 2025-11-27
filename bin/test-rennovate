@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Validate Renovate configuration using the official image (no repo writes).
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [--local]
+
+Validate Renovate config (renovate.json) with renovate-config-validator.
+
+By default uses the renovate/renovate Docker image so no node install is needed.
+
+Options:
+  --local   Use npx renovate-config-validator instead of Docker (requires npm).
+  -h, --help  Show this help message.
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "${1:-}" == "--local" ]]; then
+  if ! command -v npx >/dev/null 2>&1; then
+    echo "npx is required for --local" >&2
+    exit 1
+  fi
+  (cd "$REPO_ROOT" && npx --yes -p renovate@latest renovate-config-validator)
+  exit 0
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is required (or use --local)" >&2
+  exit 1
+fi
+
+docker run --rm \
+  -v "$REPO_ROOT:/repo" \
+  -w /repo \
+  renovate/renovate:latest \
+  renovate-config-validator
