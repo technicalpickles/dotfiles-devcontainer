@@ -1,0 +1,63 @@
+name: "Publish Base Image"
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/technicalpickles/dotfiles-devcontainer/base
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build candidate image
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_NAME }}:build-${{ github.sha }}
+          DOCKER_BUILDKIT: 1
+        run: ./bin/build-base
+
+      - name: Test candidate image
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_NAME }}:build-${{ github.sha }}
+        run: ./bin/test-base
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/base/Dockerfile
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=base-image
+          cache-to: type=gha,scope=base-image,mode=max

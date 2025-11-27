@@ -1,0 +1,38 @@
+name: "CI - Base Image"
+
+on:
+  pull_request:
+    paths:
+      - "docker/base/**"
+      - "docker/goss.yaml"
+      - "bin/build-base"
+      - "bin/test-base"
+      - ".github/workflows/base-image-ci.yaml"
+  push:
+    branches: [main]
+    paths:
+      - "docker/base/**"
+      - "docker/goss.yaml"
+      - "bin/build-base"
+      - "bin/test-base"
+      - ".github/workflows/base-image-ci.yaml"
+
+jobs:
+  test-base-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build base image
+        env:
+          IMAGE_TAG: ghcr.io/technicalpickles/dotfiles-devcontainer/base:ci-${{ github.sha }}
+          DOCKER_BUILDKIT: 1
+        run: ./bin/build-base
+
+      - name: Test base image
+        env:
+          IMAGE_TAG: ghcr.io/technicalpickles/dotfiles-devcontainer/base:ci-${{ github.sha }}
+        run: ./bin/test-base

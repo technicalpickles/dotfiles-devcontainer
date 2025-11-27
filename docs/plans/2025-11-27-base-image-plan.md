@@ -1,7 +1,7 @@
 # Base Image + Dotfiles Helper Plan
 
 **Date:** 2025-11-27
-**Status:** Draft
+**Status:** In Progress
 **Owner:** technicalpickles
 
 ## Goals
@@ -58,8 +58,8 @@
   - **Functional smoke**: run a container as `vscode`, execute `setup-dotfiles --repo https://github.com/technicalpickles/dotfiles.git --branch main --env DOCKER_BUILD=true`, verify dotfiles cloned and config files present, re-run to check idempotency, and sanity-check `fish/gh/aws/op/mise/starship --version`.
   - Keep docker-in-docker out of base tests (covered by devcontainer feature).
 - Local helpers:
-  - Add `bin/build-base` to build the base image locally.
-  - Add `bin/test-base` to run goss + functional smoke locally, mirroring CI.
+- Add `bin/build-base` to build the base image locally. ✅
+- Add `bin/test-base` to run goss + functional smoke locally, mirroring CI. ✅
 
 ## Open Considerations
 

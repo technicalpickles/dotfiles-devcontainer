@@ -1,4 +1,6 @@
 [tools]
+act = "latest"
+actionlint = "latest"
 node = "lts"
 pkl = "latest"
 
