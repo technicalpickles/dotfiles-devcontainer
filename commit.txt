@@ -1,0 +1,8 @@
+base image: add reusable dotfiles helper and tests
+
+- move base image build context to docker/base with setup-dotfiles helper (cleaning up old images/ path)
+- simplify template Dockerfile to consume the base image and use setup-dotfiles; keep chsh in template
+- drop aws/op features now baked into the base image; keep dind feature
+- reuse setup-dotfiles in post-create
+- add goss + functional smoke tests and helper scripts (build-base/test-base), with goss.yaml under docker/
+- document the plan in docs/plans/2025-11-27-base-image-plan.md

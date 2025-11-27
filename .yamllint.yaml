@@ -1,0 +1,7 @@
+---
+# Relaxed yamllint config: keep syntax checks but avoid noisy style nits.
+extends: relaxed
+
+rules:
+  line-length: disable
+  new-line-at-end-of-file: disable

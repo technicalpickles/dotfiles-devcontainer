@@ -1,0 +1,4 @@
+default: true
+
+# Disable MD013 (line length) because the docs intentionally include long URLs, tables, and preformatted text.
+MD013: false

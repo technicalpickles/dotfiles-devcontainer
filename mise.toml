@@ -1,2 +1,6 @@
 [tools]
+node = "lts"
 pkl = "latest"
+
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
