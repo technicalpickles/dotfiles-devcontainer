@@ -3,6 +3,7 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG GOSS_VERSION=v0.3.22
 
 # Install core tooling and CLIs
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -48,6 +49,9 @@ RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -
 RUN curl https://mise.run | sh \
     && mv /root/.local/bin/mise /usr/local/bin/mise \
     && curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
+
+# Install goss (pinned version)
+RUN curl -fsSL https://goss.rocks/install | GOSS_VER="${GOSS_VERSION}" GOSS_DST=/usr/local/bin sh
 
 # Dotfiles setup helper
 COPY docker/base/setup-dotfiles /usr/local/bin/setup-dotfiles

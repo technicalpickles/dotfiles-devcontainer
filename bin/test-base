@@ -58,7 +58,7 @@ echo "Running goss checks..."
 docker run --rm \
   -v "${GOSS_FILE}:/tmp/goss.yaml:ro" \
   "${IMAGE_TAG}" \
-  bash -lc 'if ! command -v goss >/dev/null 2>&1; then export GOSS_DST=/tmp/goss; mkdir -p "$GOSS_DST"; curl -fsSL https://goss.rocks/install | sh; fi; export PATH=/tmp/goss:$PATH; goss -g /tmp/goss.yaml validate'
+  bash -lc 'goss -g /tmp/goss.yaml validate'
 
 echo "Running functional smoke..."
 docker run --rm \

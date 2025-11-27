@@ -11,6 +11,8 @@
 - Reduce layer count/size and keep the `vscode` user/UID/GID intact.
 - Keep Docker-in-Docker wiring via the existing devcontainer feature; bake simpler tools (AWS CLI, 1Password CLI) into the image.
 - Set up automation for frequent rebuilds and upstream base image refreshes.
+  - ✅ CI workflow builds/tests the base image on PRs/main.
+  - ✅ Publish workflow builds/tests then pushes to GHCR on main, weekly cron, or manual dispatch.
 
 ## Base Image Definition
 
@@ -42,8 +44,8 @@
 
 - **GitHub Actions workflow:**
   - Build and push base image to GHCR on `main` pushes and on a scheduled cadence (daily/weekly).
-  - Use BuildKit cache; `--pull` to pick up security updates.
-  - Set GHCR labels/metadata; login via repo secrets.
+  - Use BuildKit cache; `--pull` to pick up security updates. ✅ `base-image-publish` added (main + weekly cron + manual).
+  - Set GHCR labels/metadata; login via repo secrets. ✅
 - **Renovate:**
   - Pin upstream base image digest in the base Dockerfile.
   - Configure Renovate to monitor that digest and open PRs when it changes (pattern from `technicalpickles/agentic-container`).
