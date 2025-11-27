@@ -48,7 +48,7 @@
   - Set GHCR labels/metadata; login via repo secrets. ✅
   - Push the exact image that was tested (build → test → push without rebuild). ✅
 - **Renovate:**
-  - Pin upstream base image digest in the base Dockerfile.
+  - Pin upstream base image digest in the base Dockerfile. ✅
   - Configure Renovate to monitor that digest and open PRs when it changes (pattern from `technicalpickles/agentic-container`).
   - Rebuild image on Renovate PRs for security refresh.
 

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+FROM mcr.microsoft.com/devcontainers/base:ubuntu@sha256:8d68bbf458958747a7f41756f60de95d5b404f374f05cd42969957653fad0cfe
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG GOSS_VERSION=v0.3.22

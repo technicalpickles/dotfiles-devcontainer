@@ -37,6 +37,7 @@ done
 
 echo "Building base image: ${IMAGE_TAG}"
 DOCKER_BUILDKIT=1 docker build \
+  --pull \
   -f "${REPO_ROOT}/docker/base/Dockerfile" \
   -t "${IMAGE_TAG}" \
   "${REPO_ROOT}"
