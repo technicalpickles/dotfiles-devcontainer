@@ -1,0 +1,22 @@
+name: "CI - Bats Apply Tests"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          npm install -g bats-core
+
+      - name: Run Bats tests
+        run: bats test/apply.bats
