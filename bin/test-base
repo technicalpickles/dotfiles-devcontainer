@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+IMAGE_TAG="${IMAGE_TAG:-ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
+DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [--tag <image-tag>] [--repo <dotfiles-repo>] [--branch <dotfiles-branch>]
+
+Run base image tests (goss + functional smoke).
+
+Options:
+  --tag <image>     Base image tag to test (default: ${IMAGE_TAG})
+  --repo <url>      Dotfiles repo for functional smoke (default: ${DOTFILES_REPO})
+  --branch <name>   Dotfiles branch (default: ${DOTFILES_BRANCH})
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tag)
+      IMAGE_TAG="$2"
+      shift 2
+      ;;
+    --repo)
+      DOTFILES_REPO="$2"
+      shift 2
+      ;;
+    --branch)
+      DOTFILES_BRANCH="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+GOSS_FILE="${REPO_ROOT}/docker/goss.yaml"
+
+if [[ ! -f "${GOSS_FILE}" ]]; then
+  echo "Missing goss file: ${GOSS_FILE}" >&2
+  exit 1
+fi
+
+echo "Running goss checks..."
+docker run --rm \
+  -v "${GOSS_FILE}:/tmp/goss.yaml:ro" \
+  "${IMAGE_TAG}" \
+  bash -lc 'if ! command -v goss >/dev/null 2>&1; then export GOSS_DST=/tmp/goss; mkdir -p "$GOSS_DST"; curl -fsSL https://goss.rocks/install | sh; fi; export PATH=/tmp/goss:$PATH; goss -g /tmp/goss.yaml validate'
+
+echo "Running functional smoke..."
+docker run --rm \
+  --user vscode \
+  -w /home/vscode \
+  "${IMAGE_TAG}" \
+  bash -lc "set -euo pipefail; \
+    mkdir -p /tmp/test-dotfiles && cd /tmp/test-dotfiles; \
+    git config --global user.email test@example.com; \
+    git config --global user.name Test; \
+    git init -b main >/dev/null; \
+    printf '#!/usr/bin/env bash\nset -euo pipefail\necho test-install\n' > install.sh; \
+    chmod +x install.sh; \
+    git add install.sh && git commit -m init >/dev/null; \
+    cd /home/vscode; \
+    setup-dotfiles --repo file:///tmp/test-dotfiles --branch main --env DOCKER_BUILD=true; \
+    setup-dotfiles --repo file:///tmp/test-dotfiles --branch main --env DOCKER_BUILD=true; \
+    test -d /home/vscode/.dotfiles/.git; \
+    fish --version; gh --version; aws --version; op --version; mise --version; starship --version"
+
+echo "✓ Base image tests passed"

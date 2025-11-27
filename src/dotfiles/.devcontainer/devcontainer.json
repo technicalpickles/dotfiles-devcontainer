@@ -17,9 +17,7 @@
   // "workspaceMount": "source=${templateOption:volumeName},target=/workspaces/${localWorkspaceFolderBasename},type=volume",
   // "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/aws-cli:1": {},
-    "ghcr.io/flexwie/devcontainer-features/op:1": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "customizations": {
     "vscode": {

@@ -1,58 +1,14 @@
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+FROM ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
 
-# Install basic dependencies
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends \
-    build-essential \
-    curl \
-    git \
-    wget \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    tmux \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ARG DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git
+ARG DOTFILES_BRANCH=main
+ARG DOCKER_BUILD=true
 
-# Install fish shell
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends software-properties-common \
-    && apt-add-repository ppa:fish-shell/release-3 \
-    && apt-get update \
-    && apt-get -y install --no-install-recommends fish \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install GitHub CLI
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && apt-get update \
-    && apt-get -y install --no-install-recommends gh \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install mise
-RUN curl https://mise.run | sh
-
-# Install starship
-RUN curl -sS https://starship.rs/install.sh | sh -s -- --force
-
-# Switch to vscode user
 USER vscode
 WORKDIR /home/vscode
 
-# Clone dotfiles repository
-ARG DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git
-ARG DOTFILES_BRANCH=main
-RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.dotfiles
+RUN setup-dotfiles --repo "${DOTFILES_REPO}" --branch "${DOTFILES_BRANCH}" --env "DOCKER_BUILD=${DOCKER_BUILD}"
 
-# Accept DOCKER_BUILD as build arg so it's available during install
-ARG DOCKER_BUILD=true
-
-RUN cd /home/vscode/.dotfiles && DOCKER_BUILD=${DOCKER_BUILD} bash install.sh
-
-# Set fish as default shell for vscode user
 USER root
 RUN chsh -s /usr/bin/fish vscode
 USER vscode

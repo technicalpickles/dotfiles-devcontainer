@@ -4,18 +4,13 @@ set -x
 
 echo "Running post-create setup..."
 
-# Update dotfiles to latest
-echo "📦 Updating dotfiles to latest..."
-cd /home/vscode/.dotfiles
-git pull
-echo "✓ Dotfiles updated"
-echo
+DOTFILES_DIR="/home/vscode/.dotfiles"
+REPO_URL=$(git -C "${DOTFILES_DIR}" config --get remote.origin.url || echo "https://github.com/technicalpickles/dotfiles.git")
+BRANCH_NAME=$(git -C "${DOTFILES_DIR}" rev-parse --abbrev-ref HEAD || echo "main")
 
-# Re-run dotfiles installation to pick up any updates
-echo "📦 Running dotfiles installation..."
-# Note: Environment variables are already set via containerEnv in devcontainer.json
-bash install.sh
-echo "✓ Dotfiles installation complete"
+echo "📦 Syncing dotfiles (${REPO_URL}@${BRANCH_NAME})..."
+setup-dotfiles --repo "${REPO_URL}" --branch "${BRANCH_NAME}"
+echo "✓ Dotfiles sync complete"
 echo
 
 # Configure git for safe directory
@@ -27,15 +22,15 @@ echo
 # Initialize git submodules if they exist and haven't been initialized
 echo "🔧 Checking for git submodules..."
 if [ -f .gitmodules ] && [ -d .git ]; then
-  if git submodule status | grep -q '^-'; then
-    echo "📦 Initializing git submodules..."
-    git submodule update --init --recursive
-    echo "✓ Git submodules initialized"
-  else
-    echo "✓ Git submodules already initialized"
-  fi
+	if git submodule status | grep -q '^-'; then
+		echo "📦 Initializing git submodules..."
+		git submodule update --init --recursive
+		echo "✓ Git submodules initialized"
+	else
+		echo "✓ Git submodules already initialized"
+	fi
 else
-  echo "✓ No git submodules found"
+	echo "✓ No git submodules found"
 fi
 echo
 

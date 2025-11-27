@@ -1,0 +1,36 @@
+user:
+  vscode:
+    exists: true
+    uid: 1000
+    gid: 1000
+
+package:
+  fish:
+    installed: true
+  gh:
+    installed: true
+  1password-cli:
+    installed: true
+
+command:
+  setup-dotfiles-exists:
+    exec: "test -x /usr/local/bin/setup-dotfiles"
+    exit-status: 0
+  fish-version:
+    exec: "fish --version"
+    exit-status: 0
+  gh-version:
+    exec: "gh --version"
+    exit-status: 0
+  aws-version:
+    exec: "aws --version"
+    exit-status: 0
+  op-version:
+    exec: "op --version"
+    exit-status: 0
+  mise-version:
+    exec: "mise --version"
+    exit-status: 0
+  starship-version:
+    exec: "starship --version"
+    exit-status: 0

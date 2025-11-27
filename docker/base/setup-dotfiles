@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: setup-dotfiles --repo <url> --branch <name> [--dest /path/to/dir] [--env KEY=VALUE ...]
+
+Clone (or refresh) a dotfiles repo and run its install.sh.
+Runs as the invoking user; does not change the default shell.
+EOF
+}
+
+DEST="/home/vscode/.dotfiles"
+REPO=""
+BRANCH=""
+ENV_VARS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo)
+      REPO="$2"
+      shift 2
+      ;;
+    --branch)
+      BRANCH="$2"
+      shift 2
+      ;;
+    --dest)
+      DEST="$2"
+      shift 2
+      ;;
+    --env)
+      ENV_VARS+=("$2")
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "${REPO}" || -z "${BRANCH}" ]]; then
+  echo "Error: --repo and --branch are required." >&2
+  usage
+  exit 1
+fi
+
+run_with_env() {
+  local cmd=("$@")
+  if [[ "${#ENV_VARS[@]}" -gt 0 ]]; then
+    env "${ENV_VARS[@]}" "${cmd[@]}"
+  else
+    "${cmd[@]}"
+  fi
+}
+
+if [[ -d "${DEST}/.git" ]]; then
+  git -C "${DEST}" fetch --all --prune
+  git -C "${DEST}" checkout "${BRANCH}"
+  git -C "${DEST}" reset --hard "origin/${BRANCH}"
+else
+  git clone --branch "${BRANCH}" "${REPO}" "${DEST}"
+fi
+
+if [[ ! -x "${DEST}/install.sh" ]]; then
+  echo "Error: install.sh not found or not executable in ${DEST}" >&2
+  exit 1
+fi
+
+run_with_env bash "${DEST}/install.sh"
