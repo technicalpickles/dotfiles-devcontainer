@@ -11,6 +11,8 @@ TEMPLATE_ID="ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest"
 INSTALL_ENV_VARS="${INSTALL_ENV_VARS:-}"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
+USER_SHELL="${USER_SHELL:-/usr/bin/fish}"
+USER_SHELL_NAME="${USER_SHELL_NAME:-}"
 TARGET_DIR=""
 VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
@@ -163,6 +165,7 @@ OPTIONS:
                      Can be specified multiple times
   --repo URL         Dotfiles repository URL (default: auto-detected)
   --branch BRANCH    Dotfiles branch (default: main)
+  --shell PATH       Login shell path for the vscode user (default: /usr/bin/fish)
   --verbose          Show detailed detection information
   -h, --help         Show this help message
 
@@ -170,6 +173,8 @@ ENVIRONMENT VARIABLES:
   INSTALL_ENV_VARS   Environment variables in KEY1=value1,KEY2=value2 format
   DOTFILES_REPO      Same as --repo
   DOTFILES_BRANCH    Same as --branch
+  USER_SHELL         Same as --shell
+  USER_SHELL_NAME    Override the terminal profile name (default: derived from USER_SHELL)
 
 EXAMPLES:
   # Apply to current directory with defaults
@@ -196,8 +201,8 @@ WORKFLOW:
 EOF
 }
 
-# Declare associative array for environment variables
-declare -A ENV_VARS
+# Collect env vars as KEY=VALUE entries (works with bash 3.x)
+ENV_VARS=()
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -209,7 +214,7 @@ while [[ $# -gt 0 ]]; do
     --env)
       # Parse KEY=VALUE and add to associative array
       if [[ "$2" =~ ^([^=]+)=(.*)$ ]]; then
-        ENV_VARS["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+        ENV_VARS+=("${BASH_REMATCH[1]}=${BASH_REMATCH[2]}")
       else
         echo "Error: --env requires KEY=VALUE format, got: $2" >&2
         exit 1
@@ -223,6 +228,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --branch)
       DOTFILES_BRANCH="$2"
+      shift 2
+      ;;
+    --shell)
+      USER_SHELL="$2"
       shift 2
       ;;
     --verbose)
@@ -251,6 +260,10 @@ TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
   echo "Error: Target directory does not exist: $TARGET_DIR" >&2
   exit 1
 }
+
+if [[ -z "$USER_SHELL_NAME" ]]; then
+  USER_SHELL_NAME="$(basename "$USER_SHELL")"
+fi
 
 # Track if repo was explicitly set (for auto-detection)
 DOTFILES_REPO_EXPLICIT=false
@@ -294,12 +307,13 @@ echo "Configuration:"
 echo "  Target directory: $TARGET_DIR"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
+echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
 # Temporarily disable unbound variable check for associative array
 set +u
 if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
   echo "  Environment variables:"
-  for key in "${!ENV_VARS[@]}"; do
-    echo "    $key=${ENV_VARS[$key]}"
+  for kv in "${ENV_VARS[@]}"; do
+    echo "    $kv"
   done
 fi
 set -u
@@ -369,14 +383,16 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
     CONTAINER_ENV_JSON="{"
     FIRST=true
-    for key in "${!ENV_VARS[@]}"; do
+    for kv in "${ENV_VARS[@]}"; do
+      key="${kv%%=*}"
+      value="${kv#*=}"
       if [[ "$FIRST" == "true" ]]; then
         FIRST=false
       else
         CONTAINER_ENV_JSON+=","
       fi
       # Properly escape JSON values
-      VALUE=$(printf '%s' "${ENV_VARS[$key]}" | jq -R .)
+      VALUE=$(printf '%s' "$value" | jq -R .)
       CONTAINER_ENV_JSON+="\"$key\":$VALUE"
     done
     CONTAINER_ENV_JSON+="}"
@@ -389,12 +405,20 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   sed -i.bak "s|\${templateOption:installEnvVars}|$CONTAINER_ENV_JSON|g" .devcontainer/devcontainer.json
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/devcontainer.json
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/devcontainer.json
+  sed -i.bak "s|\${templateOption:userShell}|$USER_SHELL|g" .devcontainer/devcontainer.json
+  sed -i.bak "s|\${templateOption:userShellName}|$USER_SHELL_NAME|g" .devcontainer/devcontainer.json
   rm .devcontainer/devcontainer.json.bak
 
   # Replace placeholders in Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/Dockerfile
+  sed -i.bak "s|\${templateOption:userShell}|$USER_SHELL|g" .devcontainer/Dockerfile
   rm .devcontainer/Dockerfile.bak
+
+  # Replace placeholders in post-create.sh
+  sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/post-create.sh
+  sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/post-create.sh
+  rm .devcontainer/post-create.sh.bak
 
   echo "✓ Template files copied and configured"
 else
@@ -405,13 +429,15 @@ else
   if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
     ENV_JSON="{"
     FIRST=true
-    for key in "${!ENV_VARS[@]}"; do
+    for kv in "${ENV_VARS[@]}"; do
+      key="${kv%%=*}"
+      value="${kv#*=}"
       if [[ "$FIRST" == "true" ]]; then
         FIRST=false
       else
         ENV_JSON+=","
       fi
-      VALUE=$(printf '%s' "${ENV_VARS[$key]}" | jq -R .)
+      VALUE=$(printf '%s' "$value" | jq -R .)
       ENV_JSON+="\"$key\":$VALUE"
     done
     ENV_JSON+="}"
@@ -423,6 +449,8 @@ else
     --template-id "$TEMPLATE_ID" \
     --template-args dotfilesRepo="$DOTFILES_REPO" \
     --template-args dotfilesBranch="$DOTFILES_BRANCH" \
+    --template-args userShell="$USER_SHELL" \
+    --template-args userShellName="$USER_SHELL_NAME" \
     $ENV_ARGS
 
   echo "✓ Template applied via devcontainer CLI"

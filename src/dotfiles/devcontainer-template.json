@@ -15,6 +15,16 @@
       "description": "Dotfiles repository branch",
       "default": "main"
     },
+    "userShell": {
+      "type": "string",
+      "description": "Login shell path for the vscode user",
+      "default": "/usr/bin/fish"
+    },
+    "userShellName": {
+      "type": "string",
+      "description": "VS Code terminal profile name for the shell",
+      "default": "fish"
+    },
     "installEnvVars": {
       "type": "object",
       "description": "Environment variables to set before running install.sh",
@@ -24,7 +34,5 @@
       }
     }
   },
-  "platforms": [
-    "Any"
-  ]
+  "platforms": ["Any"]
 }

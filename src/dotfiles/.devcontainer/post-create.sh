@@ -5,8 +5,11 @@ set -x
 echo "Running post-create setup..."
 
 DOTFILES_DIR="/home/vscode/.dotfiles"
-REPO_URL=$(git -C "${DOTFILES_DIR}" config --get remote.origin.url || echo "https://github.com/technicalpickles/dotfiles.git")
-BRANCH_NAME=$(git -C "${DOTFILES_DIR}" rev-parse --abbrev-ref HEAD || echo "main")
+# shellcheck disable=SC2154 # templateOption placeholders replaced by apply
+DEFAULT_REPO="${templateOption:dotfilesRepo}"
+DEFAULT_BRANCH="${templateOption:dotfilesBranch}"
+REPO_URL=$(git -C "${DOTFILES_DIR}" config --get remote.origin.url || echo "${DEFAULT_REPO}")
+BRANCH_NAME=$(git -C "${DOTFILES_DIR}" rev-parse --abbrev-ref HEAD || echo "${DEFAULT_BRANCH}")
 
 echo "📦 Syncing dotfiles (${REPO_URL}@${BRANCH_NAME})..."
 setup-dotfiles --repo "${REPO_URL}" --branch "${BRANCH_NAME}"

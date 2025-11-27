@@ -1,7 +1,8 @@
 FROM ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
 
-ARG DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git
-ARG DOTFILES_BRANCH=main
+ARG DOTFILES_REPO=${templateOption:dotfilesRepo}
+ARG DOTFILES_BRANCH=${templateOption:dotfilesBranch}
+ARG USER_SHELL=${templateOption:userShell}
 ARG DOCKER_BUILD=true
 
 USER vscode
@@ -10,5 +11,5 @@ WORKDIR /home/vscode
 RUN setup-dotfiles --repo "${DOTFILES_REPO}" --branch "${DOTFILES_BRANCH}" --env "DOCKER_BUILD=${DOCKER_BUILD}"
 
 USER root
-RUN chsh -s /usr/bin/fish vscode
+RUN chsh -s "${USER_SHELL}" vscode
 USER vscode

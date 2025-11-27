@@ -5,6 +5,7 @@
     "args": {
       "DOTFILES_REPO": "${templateOption:dotfilesRepo}",
       "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}",
+      "USER_SHELL": "${templateOption:userShell}",
       "DOCKER_BUILD": "true"
     }
   },
@@ -23,10 +24,10 @@
     "vscode": {
       "extensions": ["esbenp.prettier-vscode"],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "fish",
+        "terminal.integrated.defaultProfile.linux": "${templateOption:userShellName}",
         "terminal.integrated.profiles.linux": {
-          "fish": {
-            "path": "/usr/bin/fish"
+          "${templateOption:userShellName}": {
+            "path": "${templateOption:userShell}"
           }
         }
       }

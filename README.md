@@ -56,23 +56,26 @@ curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontai
 ```
 
 The script automatically:
+
 - Detects if running from the repo or standalone
 - Installs `@devcontainers/cli` if needed (via npx or npm)
 - Applies the template with your options
 - Warns if `.devcontainer/` already exists
 
 **Custom options:**
+
 ```bash
 # Use custom dotfiles with environment variables
 ./bin/apply \
   --repo https://github.com/YOUR_USERNAME/dotfiles.git \
   --branch main \
+  --shell /usr/bin/fish \
   --env DOTFILES_ROLE=devcontainer \
   --env CUSTOM_VAR=value \
   /path/to/your/project
 
 # Or with environment variables
-DOTFILES_REPO=https://github.com/me/dots.git ./bin/apply .
+DOTFILES_REPO=https://github.com/me/dots.git USER_SHELL=/bin/bash ./bin/apply .
 ```
 
 #### Manual CLI Application
@@ -90,7 +93,9 @@ cd /path/to/your/project
 devcontainer templates apply \
   --template-id ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest \
   --template-args dotfilesRepo=https://github.com/YOUR_USERNAME/dotfiles.git \
-  --template-args dotfilesBranch=main
+  --template-args dotfilesBranch=main \
+  --template-args userShell=/usr/bin/fish \
+  --template-args userShellName=fish
 
 # Build and start the container
 devcontainer up --workspace-folder .
@@ -105,6 +110,7 @@ To use your own dotfiles:
 **Via bin/apply**: Use the `--repo` and `--branch` flags (shown in examples above).
 
 **Via CLI**: Use the `--template-args` flag:
+
 ```bash
 devcontainer templates apply \
   --template-id ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest \
@@ -142,10 +148,10 @@ Your repository is now running in a Docker volume with native performance!
 
 ### Performance Comparison
 
-| Method | Read/Write Speed | VS Code Experience |
-|--------|------------------|-------------------|
-| **Clone in Volume** (recommended) | Fast - native Docker speed | Seamless, no difference |
-| **Bind Mount** (default) | 2-10x slower on macOS | Same experience but slower |
+| Method                            | Read/Write Speed           | VS Code Experience         |
+| --------------------------------- | -------------------------- | -------------------------- |
+| **Clone in Volume** (recommended) | Fast - native Docker speed | Seamless, no difference    |
+| **Bind Mount** (default)          | 2-10x slower on macOS      | Same experience but slower |
 
 ### Why This Works Better
 
@@ -157,6 +163,7 @@ Your repository is now running in a Docker volume with native performance!
 ### What About My Local Files?
 
 With this approach:
+
 - ✅ **Edit normally**: VS Code connects to the container, you edit files as usual
 - ✅ **Git operations**: Work normally inside the container
 - ✅ **Access your code**: Use VS Code's Explorer, terminal, etc. - everything works
@@ -164,6 +171,7 @@ With this approach:
 - ⚠️ **Backup separately**: Use git push/pull to backup; volume is isolated
 
 To access files outside VS Code if needed:
+
 ```bash
 # List volumes
 docker volume ls
@@ -183,24 +191,26 @@ docker cp <container-id>:/workspaces/project ./local-backup
    - Enable "VirtioFS for file sharing"
 
 3. **Use .dockerignore** to exclude large directories:
-   ```
-   node_modules
-   .git
-   tmp
-   *.log
-   ```
+
+```text
+node_modules
+.git
+tmp
+*.log
+```
 
 ## Template Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `dotfilesRepo` | Git URL of your dotfiles repository | `https://github.com/YOUR_USERNAME/dotfiles.git` |
-| `dotfilesBranch` | Branch to use from dotfiles repo | `main` |
-| `installEnvVars` | Key-value pairs of environment variables to set before running install.sh | `{}` |
+| Option           | Description                                                               | Default                                         |
+| ---------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
+| `dotfilesRepo`   | Git URL of your dotfiles repository                                       | `https://github.com/YOUR_USERNAME/dotfiles.git` |
+| `dotfilesBranch` | Branch to use from dotfiles repo                                          | `main`                                          |
+| `installEnvVars` | Key-value pairs of environment variables to set before running install.sh | `{}`                                            |
 
 The `installEnvVars` option allows you to pass environment variables to your dotfiles' `install.sh` script, allowing you to customize installation based on context (personal vs work vs devcontainer).
 
 Example:
+
 ```json
 {
   "installEnvVars": {
@@ -213,6 +223,7 @@ Example:
 ## What's Included
 
 ### Base Tools
+
 - Ubuntu base image
 - Build essentials (gcc, make, etc.)
 - Git, curl, wget, tmux
@@ -222,15 +233,18 @@ Example:
 - mise (runtime version manager)
 
 ### Dev Container Features
+
 - Docker-in-Docker (for running containers inside the devcontainer)
 - 1Password CLI integration
 
 ### VS Code Customizations
+
 - Fish shell as default terminal
 - Prettier extension pre-installed
 - Configured terminal profiles
 
 ### AWS Integration
+
 - AWS CLI pre-installed
 - Read-only mount of host's `~/.aws` directory
 - Supports AWS SSO authentication (run `aws sso login` on host)
@@ -243,6 +257,7 @@ Example:
 This repository includes several helper scripts in the `bin/` directory:
 
 **bin/apply** - Apply template to a project
+
 ```bash
 # Apply to a project directory
 ./bin/apply /path/to/your/project
@@ -255,6 +270,7 @@ This repository includes several helper scripts in the `bin/` directory:
 ```
 
 **bin/build** - Build template for local testing
+
 ```bash
 # Build the template with default options
 ./bin/build
@@ -264,12 +280,14 @@ This repository includes several helper scripts in the `bin/` directory:
 ```
 
 **bin/run** - Run the built container
+
 ```bash
 # Run tests or open shell in built container
 ./bin/run
 ```
 
 **bin/stop** - Stop and clean up
+
 ```bash
 # Stop container and cleanup
 ./bin/stop
@@ -277,7 +295,7 @@ This repository includes several helper scripts in the `bin/` directory:
 
 ### Project Structure
 
-```
+```text
 .
 ├── src/
 │   └── dotfiles/                    # The template
@@ -328,12 +346,9 @@ Edit [src/dotfiles/.devcontainer/devcontainer.json](src/dotfiles/.devcontainer/d
 {
   "customizations": {
     "vscode": {
-      "extensions": [
-        "esbenp.prettier-vscode",
-        "your-extension-id-here"
-      ]
-    }
-  }
+      "extensions": ["esbenp.prettier-vscode", "your-extension-id-here"],
+    },
+  },
 }
 ```
 
@@ -357,9 +372,11 @@ The container mounts your Mac's `~/.aws` directory as read-only, giving containe
 ### Usage
 
 1. **Authenticate on your Mac** (outside container):
+
    ```bash
    aws sso login
    ```
+
    This opens your browser for SSO authentication and caches credentials in `~/.aws/`.
 
 2. **Work in the container**:
@@ -398,20 +415,24 @@ aws sts get-caller-identity
 ## Troubleshooting
 
 ### Container Build Fails
+
 - Check Docker Desktop is running
 - Ensure you have enough disk space
 - Try `docker system prune` to clean up old images
 
 ### Dotfiles Not Installing
+
 - Verify your dotfiles repository URL is correct
 - Check that your `install.sh` script is executable
 - Look at container logs: `docker logs <container-id>`
 
 ### Slow Performance on macOS
+
 - See [macOS Performance Optimization](#macos-performance-optimization) section above
 - Consider using named volumes instead of bind mounts
 
 ### AWS Credentials Not Working
+
 - Verify `aws sso login` succeeded on your host Mac
 - Check credential files exist: `ls ~/.aws/sso/cache/`
 - Ensure credentials haven't expired (run `aws sts get-caller-identity` on host)
@@ -419,6 +440,7 @@ aws sts get-caller-identity
 - Note: The container automatically creates `~/.aws` on your host if it doesn't exist
 
 ### Permission Errors
+
 - The container runs as the `vscode` user (non-root)
 - Check file permissions if you see access denied errors
 - Git safe.directory is configured automatically in post-create.sh
@@ -426,6 +448,7 @@ aws sts get-caller-identity
 ## Contributing
 
 This is a personal template, but feel free to:
+
 - Open issues for bugs or questions
 - Submit PRs for improvements
 - Fork and customize for your own needs
