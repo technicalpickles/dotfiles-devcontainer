@@ -46,6 +46,7 @@
   - Build and push base image to GHCR on `main` pushes and on a scheduled cadence (daily/weekly).
   - Use BuildKit cache; `--pull` to pick up security updates. ✅ `base-image-publish` added (main + weekly cron + manual).
   - Set GHCR labels/metadata; login via repo secrets. ✅
+  - Push the exact image that was tested (build → test → push without rebuild). ✅
 - **Renovate:**
   - Pin upstream base image digest in the base Dockerfile.
   - Configure Renovate to monitor that digest and open PRs when it changes (pattern from `technicalpickles/agentic-container`).
@@ -60,8 +61,8 @@
   - **Functional smoke**: run a container as `vscode`, execute `setup-dotfiles --repo https://github.com/technicalpickles/dotfiles.git --branch main --env DOCKER_BUILD=true`, verify dotfiles cloned and config files present, re-run to check idempotency, and sanity-check `fish/gh/aws/op/mise/starship --version`.
   - Keep docker-in-docker out of base tests (covered by devcontainer feature).
 - Local helpers:
-- Add `bin/build-base` to build the base image locally. ✅
-- Add `bin/test-base` to run goss + functional smoke locally, mirroring CI. ✅
+  - Add `bin/build-base` to build the base image locally. ✅
+  - Add `bin/test-base` to run goss + functional smoke locally, mirroring CI. ✅
 
 ## Open Considerations
 

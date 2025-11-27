@@ -20,6 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -30,34 +39,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build candidate image
-        env:
-          IMAGE_TAG: ${{ env.IMAGE_NAME }}:build-${{ github.sha }}
-          DOCKER_BUILDKIT: 1
-        run: ./bin/build-base
-
-      - name: Test candidate image
-        env:
-          IMAGE_TAG: ${{ env.IMAGE_NAME }}:build-${{ github.sha }}
-        run: ./bin/test-base
-
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=sha
-
-      - name: Build and push
+      - name: Build and load tested image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/base/Dockerfile
           pull: true
-          push: true
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=base-image
           cache-to: type=gha,scope=base-image,mode=max
+
+      - name: Select primary tag for tests
+        id: primary_tag
+        run: |
+          echo "tag=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)" >> "$GITHUB_OUTPUT"
+
+      - name: Test candidate image
+        env:
+          IMAGE_TAG: ${{ steps.primary_tag.outputs.tag }}
+        run: ./bin/test-base
+
+      - name: Push tested image tags
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} docker push "{}"
