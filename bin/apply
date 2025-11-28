@@ -16,6 +16,7 @@ USER_SHELL_NAME="${USER_SHELL_NAME:-}"
 TARGET_DIR=""
 VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
+DOTFILES_REPO_WAS_FLAG=false
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -223,7 +224,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --repo)
       DOTFILES_REPO="$2"
-      DOTFILES_REPO_EXPLICIT=true
+      DOTFILES_REPO_WAS_FLAG=true
       shift 2
       ;;
     --branch)
@@ -267,8 +268,9 @@ fi
 
 # Track if repo was explicitly set (for auto-detection)
 DOTFILES_REPO_EXPLICIT=false
-if [[ -n "${DOTFILES_REPO:-}" && "$DOTFILES_REPO" != "https://github.com/technicalpickles/dotfiles.git" ]]; then
-  # Check if it was set via --repo flag or env var (not the default)
+if [[ "$DOTFILES_REPO_WAS_FLAG" == "true" ]]; then
+  DOTFILES_REPO_EXPLICIT=true
+elif [[ -n "${DOTFILES_REPO:-}" && "$DOTFILES_REPO" != "https://github.com/technicalpickles/dotfiles.git" ]]; then
   DOTFILES_REPO_EXPLICIT=true
 fi
 

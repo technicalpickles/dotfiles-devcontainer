@@ -19,15 +19,20 @@ run_apply() {
     "DOTFILES_REPO=$repo"
     "DOTFILES_BRANCH=$branch"
     "USER_SHELL=$shell"
+    "VERBOSE=true"
   )
   if [[ -n "$profile" ]]; then
     env_args+=("USER_SHELL_NAME=$profile")
   fi
 
-  run env "${env_args[@]}" "$APPLY" --repo "$repo" --branch "$branch" --shell "$shell" "$WORKDIR"
+  run env "${env_args[@]}" bash -x "$APPLY" --repo "$repo" --branch "$branch" --shell "$shell" "$WORKDIR"
   if [[ "$status" -ne 0 ]]; then
     echo "apply failed (name=$name):"
     echo "$output"
+    if [[ -d "$WORKDIR/.devcontainer" ]]; then
+      echo "contents of .devcontainer after failure:"
+      find "$WORKDIR/.devcontainer" -maxdepth 1 -type f -print -exec sed -n '1,120p' {} \;
+    fi
   fi
   [ "$status" -eq 0 ]
 }
