@@ -25,6 +25,10 @@ run_apply() {
   fi
 
   run env "${env_args[@]}" "$APPLY" --repo "$repo" --branch "$branch" --shell "$shell" "$WORKDIR"
+  if [[ "$status" -ne 0 ]]; then
+    echo "apply failed (name=$name):"
+    echo "$output"
+  fi
   [ "$status" -eq 0 ]
 }
 
@@ -60,6 +64,7 @@ for (const ch of pathStr) {
 if (buf) parts.push(buf);
 const val = parts.reduce((o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined), obj);
 if (val === undefined) {
+  console.error(`Missing path '${pathStr}' in ${file}`);
   process.exit(1);
 }
 if (typeof val === 'object') {
@@ -84,6 +89,11 @@ assert_common_state() {
   if [[ "$status" -eq 0 ]]; then
     echo "found template placeholders in post-create.sh"
     echo "$output"
+    return 1
+  fi
+
+  if [[ ! -f "$WORKDIR/.devcontainer/Dockerfile" ]]; then
+    echo "Dockerfile missing from apply output"
     return 1
   fi
 
