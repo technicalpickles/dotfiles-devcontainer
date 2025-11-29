@@ -6,10 +6,11 @@ ARG USER_SHELL=${templateOption:userShell}
 ARG DOCKER_BUILD=true
 
 USER vscode
-WORKDIR /home/vscode
+WORKDIR /home/vscode/.dotfiles
 
 RUN setup-dotfiles --repo "${DOTFILES_REPO}" --branch "${DOTFILES_BRANCH}" --env "DOCKER_BUILD=${DOCKER_BUILD}"
 
+WORKDIR /home/vscode
 USER root
 RUN chsh -s "${USER_SHELL}" vscode
 USER vscode

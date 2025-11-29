@@ -73,4 +73,5 @@ if [[ ! -x "${DEST}/install.sh" ]]; then
   exit 1
 fi
 
-run_with_env bash "${DEST}/install.sh"
+# Run install from inside the repo so relative paths resolve
+run_with_env bash -c "cd \"${DEST}\" && ./install.sh"
