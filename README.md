@@ -122,7 +122,7 @@ devcontainer templates apply \
 
 - Base images are published as multi-architecture manifests (ARM64 and X86/AMD64) to GHCR; you normally specify only the base image tag.
 - Devcontainer builds auto-select the matching architecture based on the build host. Docker emits a platform warning if the host and image mismatch.
-- An explicit platform override is available for remote/CI workflows where the build host differs from your workstation; use only when necessary.
+- An explicit platform override is available for remote/CI workflows where the build host differs from your workstation; use `bin/apply --platform <platform>` (or `PLATFORM_OVERRIDE`) only when necessary.
 - Release pipelines build and test both architectures and block publication if either variant fails validation.
 
 ## macOS Performance Optimization
