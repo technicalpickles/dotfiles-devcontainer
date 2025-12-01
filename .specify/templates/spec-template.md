@@ -5,6 +5,8 @@
 **Status**: Draft
 **Input**: User description: "$ARGUMENTS"
 
+**Constitution Alignment**: Capture how this feature keeps the template generic (user-owned dotfiles/shell), relies on the base image + `setup-dotfiles`, preserves read-only credential boundaries, and enumerates the automated checks to be updated/added (e.g., `bats test/apply.bats`, base-image smoke/Goss) plus any documentation impacts.
+
 ## User Scenarios & Testing _(mandatory)_
 
 <!--

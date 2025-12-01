@@ -3,7 +3,7 @@
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command. See the command docs (when present) for the execution workflow.
 
 ## Summary
 
@@ -31,7 +31,11 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-[Gates determined based on constitution file]
+- User-owned environment: No personal defaults; dotfiles repo/branch and shell stay user-specified or explicitly auto-detected with override. Propagation across `devcontainer.json`, `Dockerfile`, and post-create steps confirmed.
+- Reproducible base image: Uses `ghcr.io/technicalpickles/dotfiles-devcontainer/base` (pinned digest); avoids adding tooling already in the base image and reuses `setup-dotfiles`.
+- Security boundaries: Host credential mounts remain read-only; no new secret storage or privilege escalation beyond `vscode` user without justification.
+- Test-first: Plan lists required automated checks (`bats test/apply.bats`, base image smoke/Goss when applicable) before implementation.
+- Clarity & DX: Changes document detection behavior, overrides, and macOS performance guidance where relevant; helper scripts remain the primary UX.
 
 ## Project Structure
 
