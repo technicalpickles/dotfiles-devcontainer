@@ -13,12 +13,17 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/technicalpickles/dotfiles-devcontainer/base
+  PLATFORMS: linux/amd64,linux/arm64
+  CANDIDATE_TAG: ghcr.io/technicalpickles/dotfiles-devcontainer/base:candidate-${{ github.sha }}
 
 jobs:
   build-test-push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Docker metadata
         id: meta
@@ -39,28 +44,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and load tested image
+      - name: Build and push multi-arch candidate image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/base/Dockerfile
           pull: true
-          load: true
-          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          platforms: ${{ env.PLATFORMS }}
+          tags: ${{ env.CANDIDATE_TAG }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=base-image
           cache-to: type=gha,scope=base-image,mode=max
 
-      - name: Select primary tag for tests
-        id: primary_tag
-        run: |
-          echo "tag=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)" >> "$GITHUB_OUTPUT"
+      - name: Select candidate tag for tests
+        id: candidate_tag
+        run: echo "tag=${{ env.CANDIDATE_TAG }}" >> "$GITHUB_OUTPUT"
 
-      - name: Test candidate image
+      - name: Test candidate image (linux/amd64)
         env:
-          IMAGE_TAG: ${{ steps.primary_tag.outputs.tag }}
+          IMAGE_TAG: ${{ steps.candidate_tag.outputs.tag }}
+          PLATFORM: linux/amd64
         run: ./bin/test-base
 
-      - name: Push tested image tags
+      - name: Test candidate image (linux/arm64)
+        env:
+          IMAGE_TAG: ${{ steps.candidate_tag.outputs.tag }}
+          PLATFORM: linux/arm64
+        run: ./bin/test-base
+
+      - name: Promote candidate to release tags
         run: |
-          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} docker push "{}"
+          echo "${{ steps.meta.outputs.tags }}" | while read -r tag; do
+            docker buildx imagetools create "${{ env.CANDIDATE_TAG }}" --tag "$tag"
+          done
