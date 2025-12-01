@@ -1,0 +1,453 @@
+[2025-12-01T16:27:43.982Z] @devcontainers/cli 0.78.0. Node.js v24.3.0. darwin 24.6.0 arm64.
+[2025-12-01T16:27:43.982Z] Start: Run: docker buildx version
+[2025-12-01T16:27:44.048Z] Stop (66 ms): Run: docker buildx version
+[2025-12-01T16:27:44.048Z] github.com/docker/buildx v0.30.1 Homebrew
+[2025-12-01T16:27:44.048Z]
+[2025-12-01T16:27:44.048Z] Start: Run: docker -v
+[2025-12-01T16:27:44.062Z] Stop (14 ms): Run: docker -v
+[2025-12-01T16:27:44.063Z] Start: Resolving Remote
+[2025-12-01T16:27:44.064Z] Start: Run: git rev-parse --show-cdup
+[2025-12-01T16:27:44.095Z] Stop (31 ms): Run: git rev-parse --show-cdup
+[2025-12-01T16:27:44.095Z] Start: Run: docker ps -q -a --filter label=devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles --filter label=devcontainer.config_file=/Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json
+[2025-12-01T16:27:44.113Z] Stop (18 ms): Run: docker ps -q -a --filter label=devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles --filter label=devcontainer.config_file=/Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json
+[2025-12-01T16:27:44.113Z] Start: Run: docker ps -q -a --filter label=devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles
+[2025-12-01T16:27:44.130Z] Stop (17 ms): Run: docker ps -q -a --filter label=devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles
+[2025-12-01T16:27:44.541Z] Running the initializeCommand from devcontainer.json...
+
+[2025-12-01T16:27:44.542Z] Start: Run: /bin/sh -c mkdir -p /Users/josh.nichols/.aws
+[2025-12-01T16:27:44.696Z] Stop (154 ms): Run: /bin/sh -c mkdir -p /Users/josh.nichols/.aws
+[2025-12-01T16:27:44.696Z]
+[2025-12-01T16:27:44.696Z] Start: Run: docker ps -q -a --filter label=devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles --filter label=devcontainer.config_file=/Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json
+[2025-12-01T16:27:44.716Z] Stop (20 ms): Run: docker ps -q -a --filter label=devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles --filter label=devcontainer.config_file=/Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json
+[2025-12-01T16:27:44.718Z] Start: Run: docker inspect --type image ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
+[2025-12-01T16:27:44.735Z] Stop (17 ms): Run: docker inspect --type image ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
+[2025-12-01T16:27:44.735Z] > input: ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
+[2025-12-01T16:27:44.735Z] >
+[2025-12-01T16:27:44.735Z] > resource: ghcr.io/technicalpickles/dotfiles-devcontainer/base
+[2025-12-01T16:27:44.735Z] > id: base
+[2025-12-01T16:27:44.735Z] > owner: technicalpickles
+[2025-12-01T16:27:44.735Z] > namespace: technicalpickles/dotfiles-devcontainer
+[2025-12-01T16:27:44.735Z] > registry: ghcr.io
+[2025-12-01T16:27:44.735Z] > path: technicalpickles/dotfiles-devcontainer/base
+[2025-12-01T16:27:44.735Z] >
+[2025-12-01T16:27:44.735Z] > version: latest
+[2025-12-01T16:27:44.735Z] > tag?: latest
+[2025-12-01T16:27:44.735Z] > digest?: undefined
+[2025-12-01T16:27:44.735Z] manifest url: https://ghcr.io/v2/technicalpickles/dotfiles-devcontainer/base/manifests/latest
+[2025-12-01T16:27:45.178Z] [httpOci] Attempting to authenticate via 'Bearer' auth.
+[2025-12-01T16:27:45.179Z] [httpOci] Found auths entry in '/Users/josh.nichols/.docker/config.json' for registry 'ghcr.io'
+[2025-12-01T16:27:45.179Z] [httpOci] Attempting to fetch bearer token from:  https://ghcr.io/token?service=ghcr.io&scope=repository:technicalpickles/dotfiles-devcontainer/base:pull
+[2025-12-01T16:27:46.138Z] [httpOci] 200 on reattempt after auth: https://ghcr.io/v2/technicalpickles/dotfiles-devcontainer/base/manifests/latest
+[2025-12-01T16:27:46.138Z] blob url: https://ghcr.io/v2/technicalpickles/dotfiles-devcontainer/base/blobs/sha256:0a5fdff0b24537cb734fd363761ee057f491120e7bce693472a50d46be10c395
+[2025-12-01T16:27:46.138Z] [httpOci] Applying cachedAuthHeader for registry ghcr.io...
+[2025-12-01T16:27:46.911Z] [httpOci] 200 (Cached): https://ghcr.io/v2/technicalpickles/dotfiles-devcontainer/base/blobs/sha256:0a5fdff0b24537cb734fd363761ee057f491120e7bce693472a50d46be10c395
+[2025-12-01T16:27:46.912Z] workspace root: /Users/josh.nichols/workspace/dotfiles
+[2025-12-01T16:27:46.912Z] configPath: /Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json
+[2025-12-01T16:27:46.912Z] --- Processing User Features ----
+[2025-12-01T16:27:46.912Z] [* user-provided] ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:46.913Z] Resolving Feature dependencies for 'ghcr.io/devcontainers/features/docker-in-docker:2'...
+[2025-12-01T16:27:46.913Z] * Processing feature: ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:46.913Z] > input: ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:46.913Z] >
+[2025-12-01T16:27:46.913Z] > resource: ghcr.io/devcontainers/features/docker-in-docker
+[2025-12-01T16:27:46.913Z] > id: docker-in-docker
+[2025-12-01T16:27:46.913Z] > owner: devcontainers
+[2025-12-01T16:27:46.913Z] > namespace: devcontainers/features
+[2025-12-01T16:27:46.913Z] > registry: ghcr.io
+[2025-12-01T16:27:46.913Z] > path: devcontainers/features/docker-in-docker
+[2025-12-01T16:27:46.913Z] >
+[2025-12-01T16:27:46.913Z] > version: 2
+[2025-12-01T16:27:46.913Z] > tag?: 2
+[2025-12-01T16:27:46.913Z] > digest?: undefined
+[2025-12-01T16:27:46.913Z] manifest url: https://ghcr.io/v2/devcontainers/features/docker-in-docker/manifests/2
+[2025-12-01T16:27:47.374Z] [httpOci] Attempting to authenticate via 'Bearer' auth.
+[2025-12-01T16:27:47.376Z] [httpOci] Found auths entry in '/Users/josh.nichols/.docker/config.json' for registry 'ghcr.io'
+[2025-12-01T16:27:47.376Z] [httpOci] Attempting to fetch bearer token from:  https://ghcr.io/token?service=ghcr.io&scope=repository:devcontainers/features/docker-in-docker:pull
+[2025-12-01T16:27:48.335Z] [httpOci] 200 on reattempt after auth: https://ghcr.io/v2/devcontainers/features/docker-in-docker/manifests/2
+[2025-12-01T16:27:48.336Z] > input: ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:48.336Z] >
+[2025-12-01T16:27:48.336Z] > resource: ghcr.io/devcontainers/features/docker-in-docker
+[2025-12-01T16:27:48.336Z] > id: docker-in-docker
+[2025-12-01T16:27:48.336Z] > owner: devcontainers
+[2025-12-01T16:27:48.336Z] > namespace: devcontainers/features
+[2025-12-01T16:27:48.336Z] > registry: ghcr.io
+[2025-12-01T16:27:48.336Z] > path: devcontainers/features/docker-in-docker
+[2025-12-01T16:27:48.336Z] >
+[2025-12-01T16:27:48.336Z] > version: 2
+[2025-12-01T16:27:48.336Z] > tag?: 2
+[2025-12-01T16:27:48.336Z] > digest?: undefined
+[2025-12-01T16:27:48.336Z] * Processing feature: ghcr.io/devcontainers/features/common-utils
+[2025-12-01T16:27:48.336Z] > input: ghcr.io/devcontainers/features/common-utils
+[2025-12-01T16:27:48.336Z] >
+[2025-12-01T16:27:48.336Z] > resource: ghcr.io/devcontainers/features/common-utils
+[2025-12-01T16:27:48.336Z] > id: common-utils
+[2025-12-01T16:27:48.336Z] > owner: devcontainers
+[2025-12-01T16:27:48.336Z] > namespace: devcontainers/features
+[2025-12-01T16:27:48.336Z] > registry: ghcr.io
+[2025-12-01T16:27:48.336Z] > path: devcontainers/features/common-utils
+[2025-12-01T16:27:48.336Z] >
+[2025-12-01T16:27:48.336Z] > version: latest
+[2025-12-01T16:27:48.336Z] > tag?: latest
+[2025-12-01T16:27:48.336Z] > digest?: undefined
+[2025-12-01T16:27:48.336Z] manifest url: https://ghcr.io/v2/devcontainers/features/common-utils/manifests/latest
+[2025-12-01T16:27:48.336Z] [httpOci] Applying cachedAuthHeader for registry ghcr.io...
+[2025-12-01T16:27:48.807Z] [httpOci] 200 (Cached): https://ghcr.io/v2/devcontainers/features/common-utils/manifests/latest
+[2025-12-01T16:27:48.807Z] > input: ghcr.io/devcontainers/features/common-utils
+[2025-12-01T16:27:48.807Z] >
+[2025-12-01T16:27:48.807Z] > resource: ghcr.io/devcontainers/features/common-utils
+[2025-12-01T16:27:48.807Z] > id: common-utils
+[2025-12-01T16:27:48.807Z] > owner: devcontainers
+[2025-12-01T16:27:48.807Z] > namespace: devcontainers/features
+[2025-12-01T16:27:48.807Z] > registry: ghcr.io
+[2025-12-01T16:27:48.807Z] > path: devcontainers/features/common-utils
+[2025-12-01T16:27:48.807Z] >
+[2025-12-01T16:27:48.807Z] > version: latest
+[2025-12-01T16:27:48.807Z] > tag?: latest
+[2025-12-01T16:27:48.807Z] > digest?: undefined
+[2025-12-01T16:27:48.808Z] [* resolved worklist] ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:48.808Z] [
+  {
+    "type": "user-provided",
+    "userFeatureId": "ghcr.io/devcontainers/features/docker-in-docker:2",
+    "options": {},
+    "dependsOn": [],
+    "installsAfter": [
+      {
+        "type": "resolved",
+        "userFeatureId": "ghcr.io/devcontainers/features/common-utils",
+        "options": {},
+        "featureSet": {
+          "sourceInformation": {
+            "type": "oci",
+            "manifest": {
+              "schemaVersion": 2,
+              "mediaType": "application/vnd.oci.image.manifest.v1+json",
+              "config": {
+                "mediaType": "application/vnd.devcontainers",
+                "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+                "size": 2
+              },
+              "layers": [
+                {
+                  "mediaType": "application/vnd.devcontainers.layer.v1+tar",
+                  "digest": "sha256:66c7071c2ce93ee0c42031da62bfb9bdecafdec1b154a6a33b9f5be18ca71103",
+                  "size": 50176,
+                  "annotations": {
+                    "org.opencontainers.image.title": "devcontainer-feature-common-utils.tgz"
+                  }
+                }
+              ],
+              "annotations": {
+                "dev.containers.metadata": "{\"id\":\"common-utils\",\"version\":\"2.5.5\",\"name\":\"Common Utilities\",\"documentationURL\":\"https://github.com/devcontainers/features/tree/main/src/common-utils\",\"description\":\"Installs a set of common command line utilities, Oh My Zsh!, and sets up a non-root user.\",\"options\":{\"installZsh\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Install ZSH?\"},\"configureZshAsDefaultShell\":{\"type\":\"boolean\",\"default\":false,\"description\":\"Change default shell to ZSH?\"},\"installOhMyZsh\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Install Oh My Zsh!?\"},\"installOhMyZshConfig\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Allow installing the default dev container .zshrc templates?\"},\"upgradePackages\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Upgrade OS packages?\"},\"username\":{\"type\":\"string\",\"proposals\":[\"devcontainer\",\"vscode\",\"codespace\",\"none\",\"automatic\"],\"default\":\"automatic\",\"description\":\"Enter name of a non-root user to configure or none to skip\"},\"userUid\":{\"type\":\"string\",\"proposals\":[\"1001\",\"automatic\"],\"default\":\"automatic\",\"description\":\"Enter UID for non-root user\"},\"userGid\":{\"type\":\"string\",\"proposals\":[\"1001\",\"automatic\"],\"default\":\"automatic\",\"description\":\"Enter GID for non-root user\"},\"nonFreePackages\":{\"type\":\"boolean\",\"default\":false,\"description\":\"Add packages from non-free Debian repository? (Debian only)\"}}}",
+                "com.github.package.type": "devcontainer_feature"
+              }
+            },
+            "manifestDigest": "sha256:6d22e5475de578a8dadf19ce15c0ed09d82d8e3006b851dae7fe59a959c9b787",
+            "featureRef": {
+              "id": "common-utils",
+              "owner": "devcontainers",
+              "namespace": "devcontainers/features",
+              "registry": "ghcr.io",
+              "resource": "ghcr.io/devcontainers/features/common-utils",
+              "path": "devcontainers/features/common-utils",
+              "version": "latest",
+              "tag": "latest"
+            },
+            "userFeatureId": "ghcr.io/devcontainers/features/common-utils",
+            "userFeatureIdWithoutVersion": "ghcr.io/devcontainers/features/common-utils"
+          },
+          "features": [
+            {
+              "id": "common-utils",
+              "included": true,
+              "value": {}
+            }
+          ]
+        },
+        "dependsOn": [],
+        "installsAfter": [],
+        "roundPriority": 0,
+        "featureIdAliases": [
+          "common-utils"
+        ]
+      }
+    ],
+    "roundPriority": 0,
+    "featureSet": {
+      "sourceInformation": {
+        "type": "oci",
+        "manifest": {
+          "schemaVersion": 2,
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "config": {
+            "mediaType": "application/vnd.devcontainers",
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "size": 2
+          },
+          "layers": [
+            {
+              "mediaType": "application/vnd.devcontainers.layer.v1+tar",
+              "digest": "sha256:49983da204b1f58b116e2c89f0c076b85a42b60c617a7031d1b16711c7115c92",
+              "size": 40960,
+              "annotations": {
+                "org.opencontainers.image.title": "devcontainer-feature-docker-in-docker.tgz"
+              }
+            }
+          ],
+          "annotations": {
+            "dev.containers.metadata": "{\"id\":\"docker-in-docker\",\"version\":\"2.12.4\",\"name\":\"Docker (Docker-in-Docker)\",\"documentationURL\":\"https://github.com/devcontainers/features/tree/main/src/docker-in-docker\",\"description\":\"Create child containers *inside* a container, independent from the host's docker instance. Installs Docker extension in the container along with needed CLIs.\",\"options\":{\"version\":{\"type\":\"string\",\"proposals\":[\"latest\",\"none\",\"20.10\"],\"default\":\"latest\",\"description\":\"Select or enter a Docker/Moby Engine version. (Availability can vary by OS version.)\"},\"moby\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Install OSS Moby build instead of Docker CE\"},\"mobyBuildxVersion\":{\"type\":\"string\",\"default\":\"latest\",\"description\":\"Install a specific version of moby-buildx when using Moby\"},\"dockerDashComposeVersion\":{\"type\":\"string\",\"enum\":[\"none\",\"v1\",\"v2\"],\"default\":\"v2\",\"description\":\"Default version of Docker Compose (v1, v2 or none)\"},\"azureDnsAutoDetection\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Allow automatically setting the dockerd DNS server when the installation script detects it is running in Azure\"},\"dockerDefaultAddressPool\":{\"type\":\"string\",\"default\":\"\",\"proposals\":[],\"description\":\"Define default address pools for Docker networks. e.g. base=192.168.0.0/16,size=24\"},\"installDockerBuildx\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Install Docker Buildx\"},\"installDockerComposeSwitch\":{\"type\":\"boolean\",\"default\":true,\"description\":\"Install Compose Switch (provided docker compose is available) which is a replacement to the Compose V1 docker-compose (python) executable. It translates the command line into Compose V2 docker compose then runs the latter.\"},\"disableIp6tables\":{\"type\":\"boolean\",\"default\":false,\"description\":\"Disable ip6tables (this option is only applicable for Docker versions 27 and greater)\"}},\"entrypoint\":\"/usr/local/share/docker-init.sh\",\"privileged\":true,\"containerEnv\":{\"DOCKER_BUILDKIT\":\"1\"},\"customizations\":{\"vscode\":{\"extensions\":[\"ms-azuretools.vscode-containers\"],\"settings\":{\"github.copilot.chat.codeGeneration.instructions\":[{\"text\":\"This dev container includes the Docker CLI (`docker`) pre-installed and available on the `PATH` for running and managing containers using a dedicated Docker daemon running inside the dev container.\"}]}}},\"mounts\":[{\"source\":\"dind-var-lib-docker-${devcontainerId}\",\"target\":\"/var/lib/docker\",\"type\":\"volume\"}],\"installsAfter\":[\"ghcr.io/devcontainers/features/common-utils\"]}",
+            "com.github.package.type": "devcontainer_feature"
+          }
+        },
+        "manifestDigest": "sha256:7f32d985aac6929b4f37cf8a0bdb9196473e9e192281a3d708207a70633f83df",
+        "featureRef": {
+          "id": "docker-in-docker",
+          "owner": "devcontainers",
+          "namespace": "devcontainers/features",
+          "registry": "ghcr.io",
+          "resource": "ghcr.io/devcontainers/features/docker-in-docker",
+          "path": "devcontainers/features/docker-in-docker",
+          "version": "2",
+          "tag": "2"
+        },
+        "userFeatureId": "ghcr.io/devcontainers/features/docker-in-docker:2",
+        "userFeatureIdWithoutVersion": "ghcr.io/devcontainers/features/docker-in-docker"
+      },
+      "features": [
+        {
+          "id": "docker-in-docker",
+          "included": true,
+          "value": {},
+          "version": "2.12.4",
+          "name": "Docker (Docker-in-Docker)",
+          "documentationURL": "https://github.com/devcontainers/features/tree/main/src/docker-in-docker",
+          "description": "Create child containers *inside* a container, independent from the host's docker instance. Installs Docker extension in the container along with needed CLIs.",
+          "options": {
+            "version": {
+              "type": "string",
+              "proposals": [
+                "latest",
+                "none",
+                "20.10"
+              ],
+              "default": "latest",
+              "description": "Select or enter a Docker/Moby Engine version. (Availability can vary by OS version.)"
+            },
+            "moby": {
+              "type": "boolean",
+              "default": true,
+              "description": "Install OSS Moby build instead of Docker CE"
+            },
+            "mobyBuildxVersion": {
+              "type": "string",
+              "default": "latest",
+              "description": "Install a specific version of moby-buildx when using Moby"
+            },
+            "dockerDashComposeVersion": {
+              "type": "string",
+              "enum": [
+                "none",
+                "v1",
+                "v2"
+              ],
+              "default": "v2",
+              "description": "Default version of Docker Compose (v1, v2 or none)"
+            },
+            "azureDnsAutoDetection": {
+              "type": "boolean",
+              "default": true,
+              "description": "Allow automatically setting the dockerd DNS server when the installation script detects it is running in Azure"
+            },
+            "dockerDefaultAddressPool": {
+              "type": "string",
+              "default": "",
+              "proposals": [],
+              "description": "Define default address pools for Docker networks. e.g. base=192.168.0.0/16,size=24"
+            },
+            "installDockerBuildx": {
+              "type": "boolean",
+              "default": true,
+              "description": "Install Docker Buildx"
+            },
+            "installDockerComposeSwitch": {
+              "type": "boolean",
+              "default": true,
+              "description": "Install Compose Switch (provided docker compose is available) which is a replacement to the Compose V1 docker-compose (python) executable. It translates the command line into Compose V2 docker compose then runs the latter."
+            },
+            "disableIp6tables": {
+              "type": "boolean",
+              "default": false,
+              "description": "Disable ip6tables (this option is only applicable for Docker versions 27 and greater)"
+            }
+          },
+          "entrypoint": "/usr/local/share/docker-init.sh",
+          "privileged": true,
+          "containerEnv": {
+            "DOCKER_BUILDKIT": "1"
+          },
+          "customizations": {
+            "vscode": {
+              "extensions": [
+                "ms-azuretools.vscode-containers"
+              ],
+              "settings": {
+                "github.copilot.chat.codeGeneration.instructions": [
+                  {
+                    "text": "This dev container includes the Docker CLI (`docker`) pre-installed and available on the `PATH` for running and managing containers using a dedicated Docker daemon running inside the dev container."
+                  }
+                ]
+              }
+            }
+          },
+          "mounts": [
+            {
+              "source": "dind-var-lib-docker-${devcontainerId}",
+              "target": "/var/lib/docker",
+              "type": "volume"
+            }
+          ],
+          "installsAfter": [
+            "ghcr.io/devcontainers/features/common-utils"
+          ]
+        }
+      ]
+    },
+    "featureIdAliases": [
+      "docker-in-docker"
+    ]
+  }
+]
+[2025-12-01T16:27:48.808Z] [raw worklist]: ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:48.808Z] Soft-dependency 'ghcr.io/devcontainers/features/common-utils' is not required.  Removing from installation order...
+[2025-12-01T16:27:48.808Z] [worklist-without-dangling-soft-deps]: ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:48.808Z] Starting round-based Feature install order calculation from worklist...
+[2025-12-01T16:27:48.808Z]
+[round] ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:48.808Z] [round-candidates] ghcr.io/devcontainers/features/docker-in-docker:2 (0)
+[2025-12-01T16:27:48.808Z] [round-after-filter-priority] (maxPriority=0) ghcr.io/devcontainers/features/docker-in-docker:2 (0)
+[2025-12-01T16:27:48.808Z] [round-after-comparesTo] ghcr.io/devcontainers/features/docker-in-docker:2
+[2025-12-01T16:27:48.808Z] --- Fetching User Features ----
+[2025-12-01T16:27:48.809Z] * Fetching feature: docker-in-docker_0_oci
+[2025-12-01T16:27:48.809Z] Fetching from OCI
+[2025-12-01T16:27:48.809Z] blob url: https://ghcr.io/v2/devcontainers/features/docker-in-docker/blobs/sha256:49983da204b1f58b116e2c89f0c076b85a42b60c617a7031d1b16711c7115c92
+[2025-12-01T16:27:48.810Z] [httpOci] Applying cachedAuthHeader for registry ghcr.io...
+[2025-12-01T16:27:49.521Z] [httpOci] 200 (Cached): https://ghcr.io/v2/devcontainers/features/docker-in-docker/blobs/sha256:49983da204b1f58b116e2c89f0c076b85a42b60c617a7031d1b16711c7115c92
+[2025-12-01T16:27:49.523Z] omitDuringExtraction: '
+[2025-12-01T16:27:49.523Z] Files to omit: ''
+[2025-12-01T16:27:49.526Z] Testing './'(Directory)
+[2025-12-01T16:27:49.527Z] Testing './NOTES.md'(File)
+[2025-12-01T16:27:49.528Z] Testing './README.md'(File)
+[2025-12-01T16:27:49.528Z] Testing './devcontainer-feature.json'(File)
+[2025-12-01T16:27:49.528Z] Testing './install.sh'(File)
+[2025-12-01T16:27:49.532Z] Files extracted from blob: ./NOTES.md, ./README.md, ./devcontainer-feature.json, ./install.sh
+[2025-12-01T16:27:49.532Z] * Fetched feature: docker-in-docker_0_oci version 2.12.4
+[2025-12-01T16:27:49.537Z] Start: Run: docker buildx build --load --build-arg BUILDKIT_INLINE_CACHE=1 -f /var/folders/kl/sqt6t_7s7dq78xyr6vrbv_z00000gn/T/devcontainercli/container-features/0.78.0-1764606466911/Dockerfile-with-features -t vsc-dotfiles-001fa5d51a6ab8b582b1cd46ad1efc3cabbb6bbba0cb0f6184b8cfbbbfbbdfd2 --target dev_containers_target_stage --build-arg DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git --build-arg DOTFILES_BRANCH=main --build-arg USER_SHELL=/usr/bin/fish --build-arg DOCKER_BUILD=true --build-context dev_containers_feature_content_source=/var/folders/kl/sqt6t_7s7dq78xyr6vrbv_z00000gn/T/devcontainercli/container-features/0.78.0-1764606466911 --build-arg _DEV_CONTAINERS_BASE_IMAGE=dev_container_auto_added_stage_label --build-arg _DEV_CONTAINERS_IMAGE_USER=vscode --build-arg _DEV_CONTAINERS_FEATURE_CONTENT_SOURCE=dev_container_feature_content_temp /Users/josh.nichols/workspace/dotfiles/.devcontainer
+[2025-12-01T16:27:50.179Z] #0 building with "colima-gusto" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile-with-features
+#1 transferring dockerfile: 3.63kB done
+#1 DONE 0.0s
+
+
+[2025-12-01T16:27:50.179Z] #2 [auth] docker/dockerfile:pull token for registry-1.docker.io
+
+[2025-12-01T16:27:50.329Z] #2 DONE 0.0s
+
+
+[2025-12-01T16:27:50.329Z] #3 resolve image config for docker-image://docker.io/docker/dockerfile:1.4
+
+[2025-12-01T16:27:50.422Z] #3 DONE 0.4s
+
+[2025-12-01T16:27:50.658Z]
+#4 docker-image://docker.io/docker/dockerfile:1.4@sha256:9ba7531bd80fb0a858632727cf7a112fbfd19b17e94c4e84ced81e24ef1a0dbc
+#4 resolve docker.io/docker/dockerfile:1.4@sha256:9ba7531bd80fb0a858632727cf7a112fbfd19b17e94c4e84ced81e24ef1a0dbc done
+#4 CACHED
+
+#5 [internal] load .dockerignore
+
+[2025-12-01T16:27:50.658Z] #5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [context dev_containers_feature_content_source] load .dockerignore
+#6 transferring dev_containers_feature_content_source: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load metadata for ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
+
+[2025-12-01T16:27:51.670Z] #7 DONE 1.2s
+
+[2025-12-01T16:27:51.869Z]
+#8 [context dev_containers_feature_content_source] load from client
+
+[2025-12-01T16:27:51.869Z] #8 transferring dev_containers_feature_content_source: 46.75kB done
+#8 DONE 0.0s
+
+#9 [dev_container_auto_added_stage_label 1/5] FROM ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest@sha256:e59713b6e61a6c50a27bcfe6f644afaa08c6a467a02fd73580394977edd27237
+#9 resolve ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest@sha256:e59713b6e61a6c50a27bcfe6f644afaa08c6a467a02fd73580394977edd27237 0.0s done
+#9 DONE 0.0s
+
+#10 [dev_containers_target_stage 1/4] RUN mkdir -p /tmp/dev-container-features
+#10 CACHED
+
+#11 [dev_containers_target_stage 3/4] RUN echo "_CONTAINER_USER_HOME=$( (command -v getent >/dev/null 2>&1 && getent passwd 'vscode' || grep -E '^vscode|^[^:]*:[^:]*:vscode:' /etc/passwd || true) | cut -d: -f6)" >> /tmp/dev-container-features/devcontainer-features.builtin.env && echo "_REMOTE_USER_HOME=$( (command -v getent >/dev/null 2>&1 && getent passwd 'vscode' || grep -E '^vscode|^[^:]*:[^:]*:vscode:' /etc/passwd || true) | cut -d: -f6)" >> /tmp/dev-container-features/devcontainer-features.builtin.env
+#11 CACHED
+
+#12 [dev_containers_feature_content_normalize 1/2] COPY --from=dev_containers_feature_content_source devcontainer-features.builtin.env /tmp/build-features/
+#12 CACHED
+
+#13 [dev_containers_target_stage 2/4] COPY --from=dev_containers_feature_content_normalize /tmp/build-features/ /tmp/dev-container-features
+#13 CACHED
+
+#14 [dev_container_auto_added_stage_label 4/5] WORKDIR /home/vscode
+#14 CACHED
+
+#15 [dev_containers_feature_content_normalize 2/2] RUN chmod -R 0755 /tmp/build-features/
+#15 CACHED
+
+#16 [dev_container_auto_added_stage_label 2/5] WORKDIR /home/vscode/.dotfiles
+#16 CACHED
+
+#17 [dev_container_auto_added_stage_label 3/5] RUN setup-dotfiles --repo "https://github.com/technicalpickles/dotfiles.git" --branch "main" --env "DOCKER_BUILD=true"
+#17 CACHED
+
+#18 [dev_container_auto_added_stage_label 5/5] RUN chsh -s "/usr/bin/fish" vscode
+#18 CACHED
+
+#19 [dev_containers_target_stage 4/4] RUN --mount=type=bind,from=dev_containers_feature_content_source,source=docker-in-docker_0,target=/tmp/build-features-src/docker-in-docker_0     cp -ar /tmp/build-features-src/docker-in-docker_0 /tmp/dev-container-features  && chmod -R 0755 /tmp/dev-container-features/docker-in-docker_0  && cd /tmp/dev-container-features/docker-in-docker_0  && chmod +x ./devcontainer-features-install.sh  && ./devcontainer-features-install.sh  && rm -rf /tmp/dev-container-features/docker-in-docker_0
+#19 CACHED
+
+#20 exporting to image
+#20 exporting layers done
+#20 preparing layers for inline cache
+#20 WARN: Requested platform "linux/arm64" does not match result platform "linux/amd64"
+
+[2025-12-01T16:27:51.978Z] #20 preparing layers for inline cache 0.3s done
+
+[2025-12-01T16:27:52.042Z] #20 exporting manifest sha256:0a9dcf6befbf72ff7d817ee8445c7e8c712f9c7791f9bfbeac5a5a007c460365 done
+#20 exporting config sha256:2b8c1ea764ff99bdf9dc5a935e9aa1a9787264cb5060f2706cd199686b35b0ec done
+#20 exporting attestation manifest sha256:38cdaf49dbb10580c5e96b0f1600079caba16372adbb991ea95ccd0fb3b9faa6 done
+#20 exporting manifest list sha256:e5fe9bdc207428fc820b37cd93eca84f6df2bbfe5066bc4452ea96e34c744705 done
+#20 naming to docker.io/library/vsc-dotfiles-001fa5d51a6ab8b582b1cd46ad1efc3cabbb6bbba0cb0f6184b8cfbbbfbbdfd2:latest done
+#20 DONE 0.3s
+
+[2025-12-01T16:27:52.042Z]
+ 1 warning found (use docker --debug to expand):
+ - Requested platform "linux/arm64" does not match result platform "linux/amd64"
+
+[2025-12-01T16:27:52.045Z] Stop (2508 ms): Run: docker buildx build --load --build-arg BUILDKIT_INLINE_CACHE=1 -f /var/folders/kl/sqt6t_7s7dq78xyr6vrbv_z00000gn/T/devcontainercli/container-features/0.78.0-1764606466911/Dockerfile-with-features -t vsc-dotfiles-001fa5d51a6ab8b582b1cd46ad1efc3cabbb6bbba0cb0f6184b8cfbbbfbbdfd2 --target dev_containers_target_stage --build-arg DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git --build-arg DOTFILES_BRANCH=main --build-arg USER_SHELL=/usr/bin/fish --build-arg DOCKER_BUILD=true --build-context dev_containers_feature_content_source=/var/folders/kl/sqt6t_7s7dq78xyr6vrbv_z00000gn/T/devcontainercli/container-features/0.78.0-1764606466911 --build-arg _DEV_CONTAINERS_BASE_IMAGE=dev_container_auto_added_stage_label --build-arg _DEV_CONTAINERS_IMAGE_USER=vscode --build-arg _DEV_CONTAINERS_FEATURE_CONTENT_SOURCE=dev_container_feature_content_temp /Users/josh.nichols/workspace/dotfiles/.devcontainer
+[2025-12-01T16:27:52.046Z] Start: Run: docker events --format {{json .}} --filter event=start
+[2025-12-01T16:27:52.048Z] Start: Starting container
+[2025-12-01T16:27:52.048Z] Start: Run: docker run --sig-proxy=false -a STDOUT -a STDERR --mount type=bind,source=/Users/josh.nichols/workspace/dotfiles,target=/workspaces/dotfiles,consistency=cached --mount type=volume,src=dind-var-lib-docker-1bg2uam98dej6sbd3me11kjummn7a87t4mu4ul93n0mldkfp5jmu,dst=/var/lib/docker --mount source=/Users/josh.nichols/.aws,target=/home/vscode/.aws,type=bind,readonly -l devcontainer.local_folder=/Users/josh.nichols/workspace/dotfiles -l devcontainer.config_file=/Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json -e 0={ -e 1=} --privileged --entrypoint /bin/sh vsc-dotfiles-001fa5d51a6ab8b582b1cd46ad1efc3cabbb6bbba0cb0f6184b8cfbbbfbbdfd2 -c echo Container started
+[2025-12-01T16:27:52.098Z] WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+[2025-12-01T16:27:52.154Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"6e2e5a5c53442191831726c6bc141ea9a42d73ed6f5723014e1ec9f29085a5b9","Attributes":{"dev.containers.features":"common","dev.containers.id":"base-ubuntu","dev.containers.release":"v0.4.21","dev.containers.source":"https://github.com/devcontainers/images","dev.containers.timestamp":"Thu, 27 Nov 2025 11:16:43 GMT","dev.containers.variant":"noble","devcontainer.config_file":"/Users/josh.nichols/workspace/dotfiles/.devcontainer/devcontainer.json","devcontainer.local_folder":"/Users/josh.nichols/workspace/dotfiles","devcontainer.metadata":"[ {\"id\":\"ghcr.io/devcontainers/features/common-utils:2\"}, {\"id\":\"ghcr.io/devcontainers/features/git:1\",\"customizations\":{\"vscode\":{\"settings\":{\"github.copilot.chat.codeGeneration.instructions\":[{\"text\":\"This dev container includes an up-to-date version of Git, built from source as needed, pre-installed and available on the `PATH`.\"}]}}}}, {\"remoteUser\":\"vscode\"}, {\"id\":\"ghcr.io/devcontainers/features/docker-in-docker:2\",\"privileged\":true,\"entrypoint\":\"/usr/local/share/docker-init.sh\",\"mounts\":[{\"source\":\"dind-var-lib-docker-${devcontainerId}\",\"target\":\"/var/lib/docker\",\"type\":\"volume\"}],\"customizations\":{\"vscode\":{\"extensions\":[\"ms-azuretools.vscode-containers\"],\"settings\":{\"github.copilot.chat.codeGeneration.instructions\":[{\"text\":\"This dev container includes the Docker CLI (`docker`) pre-installed and available on the `PATH` for running and managing containers using a dedicated Docker daemon running inside the dev container.\"}]}}}}, {\"postCreateCommand\":\"bash .devcontainer/post-create.sh\",\"customizations\":{\"vscode\":{\"extensions\":[\"esbenp.prettier-vscode\"],\"settings\":{\"terminal.integrated.defaultProfile.linux\":\"fish\",\"terminal.integrated.profiles.linux\":{\"fish\":{\"path\":\"/usr/bin/fish\"}}}}},\"mounts\":[\"source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,readonly\"],\"containerEnv\":\"{}\"} ]","image":"vsc-dotfiles-001fa5d51a6ab8b582b1cd46ad1efc3cabbb6bbba0cb0f6184b8cfbbbfbbdfd2","name":"stupefied_cray","org.opencontainers.image.created":"2025-12-01T06:09:51.323Z","org.opencontainers.image.description":"Dev Container template with dotfiles, Fish shell, starship prompt, and AWS SSO integration for a personalized development experience","org.opencontainers.image.licenses":"MIT","org.opencontainers.image.ref.name":"ubuntu","org.opencontainers.image.revision":"8bc645f9d437d7c6263cff0c8847ec8818230000","org.opencontainers.image.source":"https://github.com/technicalpickles/dotfiles-devcontainer","org.opencontainers.image.title":"dotfiles-devcontainer","org.opencontainers.image.url":"https://github.com/technicalpickles/dotfiles-devcontainer","org.opencontainers.image.version":"latest","version":"2.1.2"}},"scope":"local","time":1764606474,"timeNano":1764606474249117743}
+[2025-12-01T16:27:52.163Z] Container started
+[2025-12-01T16:27:52.601Z] Not setting dockerd DNS manually.
+[2025-12-01T16:28:18.686Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"bde24d9d2bff939f1a499f5dbb83e3837c218554abc9d2d510ecf2519ca6da18","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-s0bj"}},"scope":"local","time":1764606500,"timeNano":1764606500782144214}
+[2025-12-01T16:28:48.718Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"3a123c46abe46580eb9f0431cf3911f2476ca716c9ba440fe52c8c67be2e687a","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-bkg3"}},"scope":"local","time":1764606530,"timeNano":1764606530814955442}
+[2025-12-01T16:29:18.709Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"b7f8c8ae1c810cd07fca5b6523cd748f5226a576dced065fa47c448b330afbb7","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-0wqo"}},"scope":"local","time":1764606560,"timeNano":1764606560807251424}
+[2025-12-01T16:29:48.783Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"99f8694f5d90b1c62fcedbb3c4f2a3be625b38b7f43f0a2b2031a5e861b2d379","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-cw7h"}},"scope":"local","time":1764606590,"timeNano":1764606590881532849}
+[2025-12-01T16:30:19.594Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"20ea6f3fe474a5f629f52a1b615bb2cecee7e8bfcec3c6318306560aad7c4539","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-xbs1"}},"scope":"local","time":1764606621,"timeNano":1764606621692770371}
+[2025-12-01T16:30:48.971Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"af9e7458e890a5a357ebb29e5f15b65c629f5ff20dccdb284bbfb6f5d8a3df46","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-nq07"}},"scope":"local","time":1764606651,"timeNano":1764606651070937912}
+[2025-12-01T16:31:19.224Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"19982acdc098ecd7df13f991ede379884ec555ef6f8bfea7b35767be33ef8cd5","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-e1rx"}},"scope":"local","time":1764606681,"timeNano":1764606681325409882}
+[2025-12-01T16:31:49.313Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"dea78a21452a374aabcfe6aac7efdcacb8a804d81150357d2b5b0ac93b0c9125","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-zzws"}},"scope":"local","time":1764606711,"timeNano":1764606711414247105}
+[2025-12-01T16:32:19.063Z] Log: startEventSeen#data {"Type":"container","Action":"start","Actor":{"ID":"6dbab875bba7f55086e755fd1ec22f5f451534983b3221cfec82adacba1576ed","Attributes":{"com.mcpproxy.created":"8099","com.mcpproxy.instance":"c00d6ae0-4eac-40d9-ae2e-f36e5c75ce0a","com.mcpproxy.managed":"true","com.mcpproxy.server":"glean","image":"docker.io/library/node:20","name":"mcpproxy-glean-tjg5"}},"scope":"local","time":1764606741,"timeNano":1764606741163888967}
