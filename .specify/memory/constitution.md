@@ -39,6 +39,7 @@ Documentation and tooling MUST make the zero-config path obvious (auto-detect do
 - Default shell is fish; alternate shells are allowed but MUST be fully propagated (devcontainer profiles, `chsh` in Dockerfile, tests).
 - Credential mounts remain read-only; additional host mounts require security review with rationale.
 - Devcontainer feature set stays minimal: keep docker-in-docker for daemon wiring; add new features only when not covered by the base image and justified by tests.
+- CI defaults to GitHub Actions public runners; avoid self-hosted-only assumptions and keep workflows portable to that environment.
 
 ## Workflow & Quality Gates
 
