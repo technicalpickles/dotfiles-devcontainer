@@ -73,6 +73,23 @@ jobs:
           PLATFORM: linux/arm64
         run: ./bin/test-base
 
+      - name: Record per-arch digests and tags
+        env:
+          CANDIDATE: ${{ env.CANDIDATE_TAG }}
+          RELEASE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo "## Base image release summary"
+            echo ""
+            echo "- Candidate tag: ${CANDIDATE}"
+            echo "- Release tags:"
+            echo "${RELEASE_TAGS}" | sed 's/^/  - /'
+            echo ""
+            echo "### Architecture digests"
+            docker buildx imagetools inspect "${CANDIDATE}" --format '{{json .Manifest.Manifests}}' \
+              | jq -r '.[] | "- \(.Platform.os)/\(.Platform.architecture): \(.Digest)"'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Promote candidate to release tags
         run: |
           echo "${{ steps.meta.outputs.tags }}" | while read -r tag; do

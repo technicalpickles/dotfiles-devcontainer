@@ -11,3 +11,9 @@
 - Publishing to GHCR must use a token with `write:packages` scope (e.g., `GITHUB_TOKEN` when the repo allows package publishing, or a `GHCR_PAT` secret).
 - Workflow should log in to `ghcr.io` before builds/pushes; fail fast if credentials are missing.
 - Confirm secrets are present in repository settings before running release workflows.
+
+## Release workflow expectations
+
+- Build multi-architecture candidates (ARM64 and X86/AMD64) with Buildx, then run smoke/Goss per architecture before promotion.
+- Publication must block if any architecture fails validation; only promote the tested candidate manifest to release tags.
+- Record per-architecture digests and release tags (step summary) for traceability.
