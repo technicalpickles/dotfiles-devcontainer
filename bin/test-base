@@ -5,8 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 IMAGE_TAG="${IMAGE_TAG:-ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest}"
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
+DOTFILES_REPO="${DOTFILES_REPO:-}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
+
+# shellcheck source=../test/test-utils/dotfiles_fixture.bash
+source "${REPO_ROOT}/test/test-utils/dotfiles_fixture.bash"
+trap cleanup_dotfiles_fixtures EXIT
 
 usage() {
   cat <<EOF
@@ -16,7 +20,7 @@ Run base image tests (goss + functional smoke).
 
 Options:
   --tag <image>     Base image tag to test (default: ${IMAGE_TAG})
-  --repo <url>      Dotfiles repo for functional smoke (default: ${DOTFILES_REPO})
+  --repo <url>      Dotfiles repo for functional smoke (default: fixture in test/fixtures/simple-dotfiles)
   --branch <name>   Dotfiles branch (default: ${DOTFILES_BRANCH})
 EOF
 }
@@ -47,11 +51,30 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "${DOTFILES_REPO}" ]]; then
+  DOTFILES_REPO="file://$(create_dotfiles_fixture_repo)"
+fi
+
 GOSS_FILE="${REPO_ROOT}/docker/goss.yaml"
 
 if [[ ! -f "${GOSS_FILE}" ]]; then
   echo "Missing goss file: ${GOSS_FILE}" >&2
   exit 1
+fi
+
+# Always initialize to keep set -u happy when PLATFORM is unset
+PLATFORM_FLAG=()
+if [[ -n "${PLATFORM:-}" ]]; then
+  PLATFORM_FLAG=(--platform "$PLATFORM")
+fi
+
+REPO_MOUNT=()
+CONTAINER_REPO_URL="${DOTFILES_REPO}"
+if [[ "${DOTFILES_REPO}" =~ ^file:// ]]; then
+  repo_path="${DOTFILES_REPO#file://}"
+  mount_target="/tmp/dotfiles-fixture"
+  REPO_MOUNT=(-v "${repo_path}:${mount_target}:ro")
+  CONTAINER_REPO_URL="file://${mount_target}"
 fi
 
 echo "Running goss checks..."
@@ -62,21 +85,22 @@ docker run --rm \
 
 echo "Running functional smoke..."
 docker run --rm \
+  ${PLATFORM_FLAG+"${PLATFORM_FLAG[@]}"} \
+  ${REPO_MOUNT+"${REPO_MOUNT[@]}"} \
   --user vscode \
   -w /home/vscode \
   "${IMAGE_TAG}" \
   bash -lc "set -euo pipefail; \
-    mkdir -p /tmp/test-dotfiles && cd /tmp/test-dotfiles; \
     git config --global user.email test@example.com; \
     git config --global user.name Test; \
-    git init -b main >/dev/null; \
-    printf '#!/usr/bin/env bash\nset -euo pipefail\necho test-install\n' > install.sh; \
-    chmod +x install.sh; \
-    git add install.sh && git commit -m init >/dev/null; \
-    cd /home/vscode; \
-    setup-dotfiles --repo file:///tmp/test-dotfiles --branch main --env DOCKER_BUILD=true; \
-    setup-dotfiles --repo file:///tmp/test-dotfiles --branch main --env DOCKER_BUILD=true; \
+    setup-dotfiles --repo \"${CONTAINER_REPO_URL}\" --branch \"${DOTFILES_BRANCH}\" --env DOCKER_BUILD=true --env DOTPICKLES_ROLE=noop; \
+    setup-dotfiles --repo \"${CONTAINER_REPO_URL}\" --branch \"${DOTFILES_BRANCH}\" --env DOCKER_BUILD=true --env DOTPICKLES_ROLE=noop; \
     test -d /home/vscode/.dotfiles/.git; \
+    if [[ \"${DOTFILES_REPO}\" == file://* ]]; then \
+      test -f /home/vscode/.dotfiles/.fixture-installed; \
+      test -f /home/vscode/.config/fish/config.fish; \
+      test -f /home/vscode/.config/starship.toml; \
+    fi; \
     fish --version; gh --version; aws --version; op --version; mise --version; starship --version"
 
 echo "✓ Base image tests passed"

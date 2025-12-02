@@ -12,12 +12,15 @@ runs:
       id: checkout_release
       uses: actions/checkout@v4
 
-    - name: Build template
-      id: build_template
+    - name: Install devcontainer CLI
       shell: bash
-      run: ${{ github.action_path }}/build.sh ${{ inputs.template }}
+      run: npm install -g @devcontainers/cli
 
-    - name: Test template
-      id: test_template
+    - name: Smoke test template
       shell: bash
-      run: ${{ github.action_path }}/test.sh  ${{ inputs.template }}
+      run: |
+        set -euo pipefail
+        bin/smoke-test \
+          --template "${{ inputs.template }}" \
+          --workdir /tmp \
+          --devcontainer-cli devcontainer

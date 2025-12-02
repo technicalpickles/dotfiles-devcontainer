@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+# Build and run the smoke test workflow locally (single command)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+TEMPLATE_ID="dotfiles"
+WORKDIR=""
+KEEP_ARTIFACTS=false
+DEVCONTAINER_CLI="${DEVCONTAINER_CLI:-}"
+NO_CACHE=false
+PULL_BASE=false
+BASE_IMAGE_OVERRIDE=""
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") [--template <id>] [--workdir <path>] [--devcontainer-cli <path>] [--base-image <image>] [--no-cache] [--pull-base] [--keep-artifacts]
+
+Build the template, run the smoke test, and clean up (mirrors the CI workflow).
+
+Options:
+  --template <id>     Template to test (default: ${TEMPLATE_ID})
+  --workdir <path>    Parent directory for the build (default: tmp/ under repo)
+  --devcontainer-cli <path>
+                      Path to devcontainer CLI to use (default: npx @devcontainers/cli@latest)
+  --base-image <img>  Override base image in the Dockerfile (rewrites FROM)
+  --no-cache          Build without Docker cache
+  --pull-base         docker pull the template base image before building
+  --keep-artifacts    Skip cleanup to inspect the build directory/container
+  -h, --help          Show this help message
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --template)
+      TEMPLATE_ID="$2"
+      shift 2
+      ;;
+    --workdir)
+      WORKDIR="$2"
+      shift 2
+      ;;
+    --devcontainer-cli)
+      DEVCONTAINER_CLI="$2"
+      shift 2
+      ;;
+    --base-image)
+      BASE_IMAGE_OVERRIDE="$2"
+      shift 2
+      ;;
+    --no-cache)
+      NO_CACHE=true
+      shift
+      ;;
+    --pull-base)
+      PULL_BASE=true
+      shift
+      ;;
+    --keep-artifacts|--keep)
+      KEEP_ARTIFACTS=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "${WORKDIR}" ]]; then
+  WORKDIR="${REPO_ROOT}/tmp"
+fi
+
+TEMPLATE_DIR="$REPO_ROOT/src/${TEMPLATE_ID}"
+BUILD_DIR="${WORKDIR%/}/${TEMPLATE_ID}"
+TEST_DIR="$REPO_ROOT/test/${TEMPLATE_ID}"
+ID_LABEL="test-container=${TEMPLATE_ID}"
+if [[ -n "${DEVCONTAINER_CLI}" ]]; then
+  DEVCONTAINER_CMD=("${DEVCONTAINER_CLI}")
+else
+  DEVCONTAINER_CMD=(npx --yes @devcontainers/cli@latest)
+fi
+
+if [[ ! -d "${TEMPLATE_DIR}" ]]; then
+  echo "Template not found: ${TEMPLATE_DIR}" >&2
+  exit 1
+fi
+
+cleanup() {
+  if [[ "${KEEP_ARTIFACTS}" == "true" ]]; then
+    echo "Skipping cleanup (--keep-artifacts). Build directory left at: ${BUILD_DIR}"
+    return
+  fi
+
+  CONTAINERS=$(docker ps -a --filter "label=${ID_LABEL}" --format "{{.ID}}")
+  if [[ -n "${CONTAINERS}" ]]; then
+    echo "Removing test containers..."
+    docker rm -f ${CONTAINERS} >/dev/null
+  fi
+
+  if [[ -d "${BUILD_DIR}" ]]; then
+    echo "Removing build directory..."
+    rm -rf "${BUILD_DIR}"
+  fi
+
+  # Remove any images tied to this workspace/config to avoid stale dotfiles
+  docker image rm -f $(docker images --filter "label=devcontainer.local_folder=${BUILD_DIR}" --format "{{.ID}}") >/dev/null 2>&1 || true
+  docker image rm -f $(docker images --filter "label=devcontainer.config_file=${BUILD_DIR}/.devcontainer/devcontainer.json" --format "{{.ID}}") >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+echo "=== Smoke test: ${TEMPLATE_ID} ==="
+echo "Template: ${TEMPLATE_DIR}"
+echo "Build dir: ${BUILD_DIR}"
+echo
+
+echo "Removing any existing test containers/images..."
+EXISTING=$(docker ps -a --filter "label=${ID_LABEL}" --format "{{.ID}}")
+if [[ -n "${EXISTING}" ]]; then
+  docker rm -f ${EXISTING} >/dev/null
+fi
+docker image rm -f $(docker images --filter "label=devcontainer.local_folder=${BUILD_DIR}" --format "{{.ID}}") >/dev/null 2>&1 || true
+docker image rm -f $(docker images --filter "label=devcontainer.config_file=${BUILD_DIR}/.devcontainer/devcontainer.json" --format "{{.ID}}") >/dev/null 2>&1 || true
+
+echo "Preparing build directory..."
+rm -rf "${BUILD_DIR}"
+mkdir -p "$(dirname "${BUILD_DIR}")"
+shopt -s dotglob
+cp -R "${TEMPLATE_DIR}" "${BUILD_DIR}"
+shopt -u dotglob
+
+# Determine base image (allow override)
+BASE_IMAGE=$(awk '/^FROM/{print $2; exit}' "${BUILD_DIR}/.devcontainer/Dockerfile")
+if [[ -n "${BASE_IMAGE_OVERRIDE}" ]]; then
+  BASE_IMAGE="${BASE_IMAGE_OVERRIDE}"
+  # Rewrite FROM to avoid using a stale cached base
+  sed -i '' "s|^FROM .*|FROM ${BASE_IMAGE}|" "${BUILD_DIR}/.devcontainer/Dockerfile"
+fi
+
+if [[ -n "${BASE_IMAGE}" ]]; then
+  if ! docker image inspect "${BASE_IMAGE}" >/dev/null 2>&1; then
+    if [[ "${PULL_BASE}" == "true" ]]; then
+      echo "Pulling base image: ${BASE_IMAGE}"
+      docker pull "${BASE_IMAGE}"
+    else
+      echo "Base image not present locally: ${BASE_IMAGE}" >&2
+      echo "Build it (bin/build-base --tag ${BASE_IMAGE}) or rerun with --pull-base." >&2
+      exit 1
+    fi
+  fi
+
+  echo "Checking base entrypoint presence..."
+  if ! docker run --rm --entrypoint /bin/sh "${BASE_IMAGE}" -c 'test -x /usr/local/bin/devcontainer-post-create'; then
+    echo "Base image missing /usr/local/bin/devcontainer-post-create: ${BASE_IMAGE}" >&2
+    echo "Rebuild the base locally (bin/build-base --tag ${BASE_IMAGE}) to include the entrypoint, or point --base-image to a known-good tag/digest." >&2
+    exit 1
+  fi
+fi
+
+pushd "${BUILD_DIR}" >/dev/null
+
+echo "Processing template options..."
+OPTION_PROPERTY=$(jq -r '.options' devcontainer-template.json)
+if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
+  OPTIONS=$(jq -r '.options | keys[]' devcontainer-template.json)
+  if [[ "${OPTIONS}" != "" && "${OPTIONS}" != "null" ]]; then
+    while IFS= read -r OPTION; do
+      OPTION_KEY="\${templateOption:${OPTION}}"
+      OPTION_VALUE=$(jq -r ".options.${OPTION}.default" devcontainer-template.json)
+
+      if [[ "${OPTION_VALUE}" == "" || "${OPTION_VALUE}" == "null" ]]; then
+        echo "Error: Missing default value for option '${OPTION}'" >&2
+        exit 1
+      fi
+
+      OPTION_VALUE_ESCAPED=$(sed -e 's/[]\\/$*.^[]/\\&/g' <<<"${OPTION_VALUE}")
+      find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i '' "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
+    done <<< "${OPTIONS}"
+  fi
+fi
+
+# Ensure DOTPICKLES_ROLE is set (default noop) inside the smoke-test container
+if [[ "${TEMPLATE_ID}" == "dotfiles" ]]; then
+  python3 - "${BUILD_DIR}/.devcontainer/post-create.sh" <<'PY'
+import sys, pathlib
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().splitlines()
+if text and text[0].startswith("#!"):
+    shebang = text[0]
+    rest = text[1:]
+else:
+    shebang = "#!/usr/bin/env bash"
+    rest = text
+injection = [
+    ': ${DOTPICKLES_ROLE:=noop}',
+    'export DOTPICKLES_ROLE',
+]
+path.write_text("\n".join([shebang, *injection, *rest]) + "\n")
+PY
+
+  python3 - "${BUILD_DIR}/.devcontainer/Dockerfile" <<'PY'
+import sys, pathlib
+path = pathlib.Path(sys.argv[1])
+lines = path.read_text().splitlines()
+updated = []
+for line in lines:
+    if line.strip().startswith("RUN setup-dotfiles"):
+        if '--env "DOTPICKLES_ROLE=noop"' not in line:
+            line = line.rstrip() + ' --env "DOTPICKLES_ROLE=noop"'
+    updated.append(line)
+path.write_text("\n".join(updated) + "\n")
+PY
+fi
+
+if [[ -d "${TEST_DIR}" ]]; then
+  echo "Copying test fixtures..."
+  DEST_DIR="${BUILD_DIR}/test-project"
+  mkdir -p "${DEST_DIR}"
+  cp -Rp "${TEST_DIR}"/* "${DEST_DIR}"
+  cp -Rp "${REPO_ROOT}/test/test-utils"/* "${DEST_DIR}"
+fi
+
+echo "Building devcontainer (this may take a moment)..."
+export DOCKER_BUILDKIT=1
+UP_FLAGS=(--id-label "${ID_LABEL}" --workspace-folder "${BUILD_DIR}" --remove-existing-container)
+if [[ "${NO_CACHE}" == "true" ]]; then
+  UP_FLAGS+=(--build-no-cache)
+fi
+"${DEVCONTAINER_CMD[@]}" up "${UP_FLAGS[@]}"
+
+echo "Running smoke test..."
+SMOKE_CMD='set -e; if [ -f "test-project/test.sh" ]; then cd test-project && if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi && ./test.sh; else echo "No tests found"; ls -la; fi'
+"${DEVCONTAINER_CMD[@]}" exec \
+  --workspace-folder "${BUILD_DIR}" \
+  --id-label "${ID_LABEL}" \
+  /bin/sh -c "${SMOKE_CMD}"
+
+popd >/dev/null
+
+echo
+echo "✓ Smoke test passed for ${TEMPLATE_ID}"
+if [[ "${KEEP_ARTIFACTS}" == "true" ]]; then
+  echo "Artifacts retained at: ${BUILD_DIR}"
+fi
