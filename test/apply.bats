@@ -15,7 +15,7 @@ teardown() {
 }
 
 run_apply() {
-  local name="$1" repo="$2" branch="$3" shell="$4" profile="$5"
+  local name="$1" repo="$2" branch="$3" shell="$4" profile="$5" platform="${6:-}"
   WORKDIR="$(mktemp -d "/tmp/devcontainer-${name}-XXXX")"
 
   local env_args=(
@@ -27,8 +27,16 @@ run_apply() {
   if [[ -n "$profile" ]]; then
     env_args+=("USER_SHELL_NAME=$profile")
   fi
+  if [[ -n "$platform" ]]; then
+    env_args+=("PLATFORM_OVERRIDE=$platform")
+  fi
 
-  run env "${env_args[@]}" bash -x "$APPLY" --repo "$repo" --branch "$branch" --shell "$shell" "$WORKDIR"
+  local platform_args=()
+  if [[ -n "$platform" ]]; then
+    platform_args+=(--platform "$platform")
+  fi
+
+  run env "${env_args[@]}" bash -x "$APPLY" --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "$WORKDIR"
   if [[ "$status" -ne 0 ]]; then
     echo "apply failed (name=$name):"
     echo "$output"
@@ -250,4 +258,51 @@ NODE
   [ "$status" -ne 0 ]
   echo "$output"
   echo "$output" | /usr/bin/grep -q "Expected base entrypoint"
+}
+
+@test "platform auto-detected and recorded in devcontainer build options" {
+  local expected_platform=""
+  case "$(uname -m)" in
+    arm64|aarch64) expected_platform="linux/arm64" ;;
+    x86_64|amd64) expected_platform="linux/amd64" ;;
+  esac
+  if [[ -z "$expected_platform" ]]; then
+    skip "unknown host arch for platform detection test"
+  fi
+
+  run_apply platform-auto "https://github.com/technicalpickles/dotfiles.git" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
+  run node - "$dc_json" "$expected_platform" <<'NODE'
+const fs = require('fs');
+const [file, expected] = process.argv.slice(2);
+const raw = fs.readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const opts = (obj.build && obj.build.options) || [];
+if (!opts.includes(`--platform=${expected}`)) {
+  console.error('missing platform flag', opts);
+  process.exit(1);
+}
+NODE
+  [ "$status" -eq 0 ]
+}
+
+@test "platform override forces requested platform in build options" {
+  run_apply platform-override "https://github.com/example/dots.git" "main" "/usr/bin/fish" "" "linux/arm64"
+  [ "$status" -eq 0 ]
+
+  local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
+  run node - "$dc_json" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+const raw = fs.readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const opts = (obj.build && obj.build.options) || [];
+if (!opts.includes('--platform=linux/arm64')) {
+  console.error('missing override flag', opts);
+  process.exit(1);
+}
+NODE
+  [ "$status" -eq 0 ]
 }

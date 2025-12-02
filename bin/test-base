@@ -76,9 +76,9 @@ if [[ "${DOTFILES_REPO}" =~ ^file:// ]]; then
   REPO_MOUNT=(-v "${repo_path}:${mount_target}:ro")
   CONTAINER_REPO_URL="file://${mount_target}"
 fi
-
 echo "Running goss checks..."
 docker run --rm \
+  ${PLATFORM_FLAG+"${PLATFORM_FLAG[@]}"} \
   -v "${GOSS_FILE}:/tmp/goss.yaml:ro" \
   "${IMAGE_TAG}" \
   bash -lc 'goss -g /tmp/goss.yaml validate'

@@ -13,6 +13,9 @@ DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
 USER_SHELL="${USER_SHELL:-/usr/bin/fish}"
 USER_SHELL_NAME="${USER_SHELL_NAME:-}"
+PLATFORM_OVERRIDE="${PLATFORM_OVERRIDE:-}"
+PLATFORM_DETECTED=""
+PLATFORM_SELECTED=""
 TARGET_DIR=""
 VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
@@ -145,6 +148,33 @@ detect_dotfiles_repo() {
   fi
 }
 
+detect_platform() {
+  local arch
+  arch="$(uname -m || true)"
+  case "$arch" in
+    arm64|aarch64)
+      PLATFORM_DETECTED="linux/arm64"
+      ;;
+    x86_64|amd64)
+      PLATFORM_DETECTED="linux/amd64"
+      ;;
+    *)
+      PLATFORM_DETECTED=""
+      ;;
+  esac
+
+  if [[ -n "$PLATFORM_OVERRIDE" ]]; then
+    PLATFORM_SELECTED="$PLATFORM_OVERRIDE"
+    echo "🔍 Platform override provided: ${PLATFORM_SELECTED}"
+  elif [[ -n "$PLATFORM_DETECTED" ]]; then
+    PLATFORM_SELECTED="$PLATFORM_DETECTED"
+    echo "🔍 Detected host architecture: ${arch} -> ${PLATFORM_SELECTED}"
+  else
+    echo "⚠️  Unsupported or unknown host architecture (${arch:-unknown}); not setting --platform. Docker may emit a platform warning."
+    PLATFORM_SELECTED=""
+  fi
+}
+
 usage() {
   cat << 'EOF'
 Usage: apply [OPTIONS] [TARGET_DIR]
@@ -167,6 +197,7 @@ OPTIONS:
   --repo URL         Dotfiles repository URL (default: auto-detected)
   --branch BRANCH    Dotfiles branch (default: main)
   --shell PATH       Login shell path for the vscode user (default: /usr/bin/fish)
+  --platform VALUE   Optional platform override for base image (e.g., linux/arm64, linux/amd64)
   --verbose          Show detailed detection information
   -h, --help         Show this help message
 
@@ -176,6 +207,7 @@ ENVIRONMENT VARIABLES:
   DOTFILES_BRANCH    Same as --branch
   USER_SHELL         Same as --shell
   USER_SHELL_NAME    Override the terminal profile name (default: derived from USER_SHELL)
+  PLATFORM_OVERRIDE  Same as --platform (forces platform flag in devcontainer build)
 
 EXAMPLES:
   # Apply to current directory with defaults
@@ -233,6 +265,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --shell)
       USER_SHELL="$2"
+      shift 2
+      ;;
+    --platform)
+      PLATFORM_OVERRIDE="$2"
       shift 2
       ;;
     --verbose)
@@ -310,6 +346,7 @@ echo "  Target directory: $TARGET_DIR"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
 echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
+echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
 # Temporarily disable unbound variable check for associative array
 set +u
 if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
@@ -319,6 +356,9 @@ if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
   done
 fi
 set -u
+echo
+
+detect_platform
 echo
 
 # Check if devcontainer CLI is installed
@@ -422,6 +462,27 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/post-create.sh
   rm .devcontainer/post-create.sh.bak
 
+  if [[ -n "$PLATFORM_SELECTED" ]]; then
+    python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json <<'PY'
+import json, sys, re
+platform = sys.argv[1]
+path = sys.argv[2]
+raw = open(path, 'r', encoding='utf-8').read()
+clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+obj = json.loads(clean)
+build = obj.get('build', {})
+options = list(build.get('options', []))
+flag = f"--platform={platform}"
+if flag not in options:
+    options.insert(0, flag)
+build['options'] = options
+obj['build'] = build
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(obj, f, indent=2)
+    f.write('\n')
+PY
+  fi
+
   echo "✓ Template files copied and configured"
 else
   # Running standalone - use devcontainer CLI with published template
@@ -454,6 +515,27 @@ else
     --template-args userShell="$USER_SHELL" \
     --template-args userShellName="$USER_SHELL_NAME" \
     $ENV_ARGS
+
+  if [[ -n "$PLATFORM_SELECTED" && -f ".devcontainer/devcontainer.json" ]]; then
+    python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json <<'PY'
+import json, sys, re
+platform = sys.argv[1]
+path = sys.argv[2]
+raw = open(path, 'r', encoding='utf-8').read()
+clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+obj = json.loads(clean)
+build = obj.get('build', {})
+options = list(build.get('options', []))
+flag = f"--platform={platform}"
+if flag not in options:
+    options.insert(0, flag)
+build['options'] = options
+obj['build'] = build
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(obj, f, indent=2)
+    f.write('\n')
+PY
+  fi
 
   echo "✓ Template applied via devcontainer CLI"
 fi
