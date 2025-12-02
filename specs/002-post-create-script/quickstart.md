@@ -1,6 +1,7 @@
 # Quickstart: Base Post-Create Entrypoint Shim
 
-1. **Add base entrypoint**: Include `/usr/local/bin/devcontainer-post-create` in the base image build, running shared steps (dotfiles sync, shell/prompt refresh, git safe-directory, optional submodule init) and honoring skip flags (`SKIP_*`).
-2. **Slim templated shim**: Refactor `src/dotfiles/.devcontainer/post-create.sh` to export templated `DOTFILES_REPO/BRANCH`, run optional hook at `/workspace/.devcontainer/hooks/post-create` in `HOOK_ORDER` (`before` default), then invoke the base entrypoint and propagate failures.
-3. **Tests**: Update `test/apply.bats` (and base smoke/Goss if image changes) to assert no placeholders remain, delegation occurs, hook ordering works, and missing/failed base entrypoint surfaces a clear error.
-4. **Docs**: Note delegation, hook path/order, skip flags, and expected failure messaging in README/docs so consumers know where to customize without editing shared logic.
+1. **Base entrypoint in image**: Ship `/usr/local/bin/devcontainer-post-create` from `docker/base/`, make it executable in the Dockerfile, and add a goss check for presence + hook path reference.
+2. **Shim delegation**: Keep `src/dotfiles/.devcontainer/post-create.sh` as a shim that exports templated `DOTFILES_REPO`/`DOTFILES_BRANCH`, resolves the hook path, and calls the base entrypoint. Honor `HOOK_ORDER=before|after` (default `before`) and allow `BASE_POST_CREATE` override for testing.
+3. **Shared behavior + skips**: Base entrypoint runs dotfiles sync (`setup-dotfiles --env DOCKER_BUILD=false`), shell/prompt refresh, git safe.directory, and guarded submodule init. Skip flags: `SKIP_DOTFILES`, `SKIP_MISE`, `SKIP_FISH`, `SKIP_GH`, `SKIP_AWS`, `SKIP_SUBMODULES` (set to `1`). Hook runs once when executable at `/workspace/.devcontainer/hooks/post-create` (shim resolves current workspace if different).
+4. **Tests**: Run `bats test/apply.bats` to confirm placeholder removal, delegation, and missing/non-executable base entrypoint failures. Use `goss -g docker/goss.yaml validate` for base image smoke (devcontainer-post-create exec + hook path reference).
+5. **Docs**: Update README/devcontainer docs to describe delegation, skip flags, hook order/path, and failure behavior so consumers know to customize hooks instead of editing shared logic.

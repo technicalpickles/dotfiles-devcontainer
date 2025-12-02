@@ -4,7 +4,10 @@ Auto-generated from all feature plans. Last updated: 2025-12-01
 
 ## Active Technologies
 
-[EXTRACTED FROM ALL PLAN.MD FILES: include devcontainer base image pin, docker-in-docker feature usage, setup-dotfiles helper, and shipped tooling (fish, starship, gh, mise, AWS CLI, 1Password CLI)]
+- Devcontainer base image pinned: `mcr.microsoft.com/devcontainers/base:ubuntu@sha256:8d68bbf458958747a7f41756f60de95d5b404f374f05cd42969957653fad0cfe`
+- Docker-in-Docker feature enabled for template (`ghcr.io/devcontainers/features/docker-in-docker:2`)
+- Helper scripts: `setup-dotfiles`, new `devcontainer-post-create` base entrypoint
+- Shipped tooling: fish, starship, gh, mise, AWS CLI v2, 1Password CLI
 
 ## Devcontainer Constraints
 
@@ -15,13 +18,19 @@ Auto-generated from all feature plans. Last updated: 2025-12-01
 ## Project Structure
 
 ```text
-src/
-tests/
+specs/
+docker/
+src/dotfiles/
+bin/
+test/
+docs/
 ```
 
 ## Commands
 
-[ONLY COMMANDS FOR ACTIVE TECHNOLOGIES; include helper scripts like `bin/apply`, `bin/build`, `bin/run`, `bin/stop`, and any test runners such as `bats test/apply.bats` or base-image smoke/Goss commands]
+- Template apply: `bin/apply [--repo ... --branch ...] <target_dir>`
+- Template tests: `bats test/apply.bats`
+- Base image smoke: `goss -g docker/goss.yaml validate`
 
 ## Code Style
 
@@ -29,8 +38,7 @@ Shell scripts (bash), Docker/Buildx on GitHub Actions public runners: Follow sta
 
 ## Recent Changes
 
-- 001-post-create-script: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-
+- 002-post-create-script: Added base `devcontainer-post-create` entrypoint and shim delegation to dotfiles/hook flow
 - 001-multi-arch-base: Added Shell scripts (bash), Docker/Buildx on GitHub Actions public runners + Docker CLI/buildx, GitHub Actions workflows, bats, Goss
 
 <!-- MANUAL ADDITIONS START -->

@@ -155,6 +155,12 @@ assert_common_state() {
     echo "$output"
     return 1
   fi
+  run rg -F "devcontainer-post-create" "$WORKDIR/.devcontainer/post-create.sh"
+  if [[ "$status" -ne 0 ]]; then
+    echo "base entrypoint delegation missing in post-create.sh"
+    echo "$output"
+    return 1
+  fi
 }
 
 @test "default templating stays generic" {
@@ -212,10 +218,37 @@ const file = process.argv[2];
 const raw = fs.readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '');
 const obj = JSON.parse(raw);
 const opts = (obj.build && obj.build.options) || [];
-if (!opts.includes('--platform=linux/arm64')) {
-  console.error('missing override flag', opts);
-  process.exit(1);
-}
+  if (!opts.includes('--platform=linux/arm64')) {
+    console.error('missing override flag', opts);
+    process.exit(1);
+  }
 NODE
   [ "$status" -eq 0 ]
+}
+
+@test "post-create fails clearly when base entrypoint is missing" {
+  run_apply missing-base "https://github.com/example/dots.git" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  run /bin/bash "$WORKDIR/.devcontainer/post-create.sh"
+  [ "$status" -ne 0 ]
+  echo "$output"
+  echo "$output" | /usr/bin/grep -q "Expected base entrypoint"
+}
+
+@test "post-create fails when base entrypoint exists but is not executable" {
+  run_apply non-executable-base "https://github.com/example/dots.git" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  local fake_base="$WORKDIR/fake-devcontainer-post-create"
+  echo "#!/usr/bin/env bash" > "$fake_base"
+  chmod 644 "$fake_base"
+
+  [ -f "$fake_base" ]
+  [ ! -x "$fake_base" ]
+
+  run env BASE_POST_CREATE="$fake_base" /bin/bash "$WORKDIR/.devcontainer/post-create.sh"
+  [ "$status" -ne 0 ]
+  echo "$output"
+  echo "$output" | /usr/bin/grep -q "Expected base entrypoint"
 }
