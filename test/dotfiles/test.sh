@@ -1,8 +1,11 @@
 #!/bin/bash
-cd $(dirname "$0")
-source test-utils.sh
+cd "$(dirname "$0")" || exit 1
+# shellcheck source=../test-utils/test-utils.sh disable=SC1091
+source ../test-utils/test-utils.sh
 
 # Template specific tests
+unset DOTPICKLES_ROLE
+
 check "distro" lsb_release -c
 check "fish-installed" fish --version
 check "starship-installed" starship --version
