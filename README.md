@@ -118,6 +118,22 @@ devcontainer templates apply \
   --template-args dotfilesBranch=main
 ```
 
+## Docker-in-Docker Feature (published)
+
+- The template consumes a published DinD feature (no `.devcontainer/features` folder is copied into your repo).
+- Base image must include Docker engine components; the feature provides wiring/entrypoint only.
+- Features block (pinned to the published version):
+
+```jsonc
+"features": {
+  "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0": {}
+}
+```
+
+- To update/pin: change the version (or digest when published) in the features block, rebuild, and verify Docker works.
+- If the registry is temporarily unavailable, retry with the pinned version/digest; as a last resort, temporarily vendor the feature and remove it once the registry is back.
+- Outage fallback: keep the pinned ref, retry with backoff, switch to a known-good digest from `docs/dind-feature.md`, and only temporarily vendor if needed (clean up afterward).
+
 ## Architecture Support (ARM64 + X86/AMD64)
 
 - Base images are published as multi-architecture manifests (ARM64 and X86/AMD64) to GHCR; you normally specify only the base image tag.

@@ -13,14 +13,12 @@
 
    ```json
    "features": {
-     "ghcr.io/technicalpickles/devcontainer-features/dind": {
-       "version": "v0.1.0"
-     }
+     "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0": {}
    }
    ```
 
 3. Build the devcontainer: `bin/build` (or VS Code/Codespaces reload) and verify Docker works without local feature files.
-4. Pin or update: change `version` (or digest when published) to control upgrades; run `bin/build` again.
+4. Pin or update: change the version tag (or switch to a digest like `ghcr.io/.../dind@sha256:<digest>`) in the `features` block; run `bin/build` again.
 
 ## Fallback when registry is unreachable
 

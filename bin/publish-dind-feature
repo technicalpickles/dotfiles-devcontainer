@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Publish the DinD devcontainer feature to GHCR using the devcontainer CLI.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+FEATURE_PATH="${FEATURE_PATH:-$REPO_ROOT/src/dotfiles/.devcontainer/features/dind}"
+REGISTRY="${REGISTRY:-ghcr.io}"
+NAMESPACE="${NAMESPACE:-technicalpickles/devcontainer-features}"
+REGISTRY_USERNAME="${REGISTRY_USERNAME:-${GITHUB_ACTOR:-}}"
+REGISTRY_TOKEN="${REGISTRY_TOKEN:-${GHCR_PAT:-${GITHUB_TOKEN:-}}}"
+DRY_RUN="${DRY_RUN:-false}"
+
+if [[ ! -f "$FEATURE_PATH/devcontainer-feature.json" ]]; then
+  echo "devcontainer-feature.json not found at $FEATURE_PATH" >&2
+  exit 1
+fi
+
+read_version() {
+  node -e "console.log(require(process.argv[1]).version)" "$FEATURE_PATH/devcontainer-feature.json"
+}
+
+DEVCONTAINER_BIN=""
+if command -v devcontainer >/dev/null 2>&1; then
+  DEVCONTAINER_BIN="devcontainer"
+elif command -v npx >/dev/null 2>&1; then
+  DEVCONTAINER_BIN="npx --yes @devcontainers/cli"
+else
+  echo "devcontainer CLI not found (install or use npx @devcontainers/cli)" >&2
+  exit 1
+fi
+
+VERSION="$(read_version)"
+echo "Publishing DinD feature version ${VERSION} from ${FEATURE_PATH}"
+echo "Registry: ${REGISTRY}, Namespace: ${NAMESPACE}"
+
+if [[ -n "$REGISTRY_TOKEN" ]]; then
+  if [[ -z "$REGISTRY_USERNAME" ]]; then
+    echo "REGISTRY_TOKEN provided but REGISTRY_USERNAME is empty; set REGISTRY_USERNAME (or GITHUB_ACTOR in CI)." >&2
+    exit 1
+  fi
+  echo "${REGISTRY_TOKEN}" | docker login "${REGISTRY}" -u "${REGISTRY_USERNAME}" --password-stdin
+else
+  echo "⚠️  No REGISTRY_TOKEN/GHCR_PAT/GITHUB_TOKEN provided. Ensure you are already logged in to ${REGISTRY}."
+fi
+
+PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE")
+if [[ "$DRY_RUN" == "true" ]]; then
+  PUBLISH_CMD+=("--dry-run")
+fi
+
+set -x
+"${PUBLISH_CMD[@]}"
+set +x
+
+echo "Publish command finished. Capture resulting digest/version from CLI output for docs."

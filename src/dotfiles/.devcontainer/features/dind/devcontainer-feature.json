@@ -1,0 +1,22 @@
+{
+  "id": "dind",
+  "version": "0.1.0",
+  "name": "Docker in Docker (wiring only)",
+  "description": "Configures Docker-in-Docker wiring for dotfiles devcontainer using Docker bits baked into the base image. Requires base image to include Docker engine components.",
+  "documentationURL": "https://github.com/technicalpickles/dotfiles-devcontainer",
+  "options": {},
+  "installsAfter": [],
+  "containerEnv": {
+    "DOCKER_BUILDKIT": "1"
+  },
+  "privileged": true,
+  "init": true,
+  "mounts": [
+    "source=docker-data,target=/var/lib/docker,type=volume",
+    "source=docker-logs,target=/var/log,type=volume",
+    "type=tmpfs,target=/run"
+  ],
+  "entrypoint": ["/usr/local/share/dind/start-dind.sh"],
+  "overrideCommand": false,
+  "containerUser": "root"
+}
