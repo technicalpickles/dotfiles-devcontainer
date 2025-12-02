@@ -29,6 +29,8 @@ Shell scripts (bash), Docker/Buildx on GitHub Actions public runners: Follow sta
 
 ## Recent Changes
 
+- 001-post-create-script: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+
 - 001-multi-arch-base: Added Shell scripts (bash), Docker/Buildx on GitHub Actions public runners + Docker CLI/buildx, GitHub Actions workflows, bats, Goss
 
 <!-- MANUAL ADDITIONS START -->
