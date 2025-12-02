@@ -1,9 +1,15 @@
 tmp/
 .worktrees/
 node_modules/
+dist/
+build/
+coverage/
 .DS_Store
 .vscode/
 .idea/
+.env
+.env.*
+*.log
 *.swp
 *.tmp
 Thumbs.db
