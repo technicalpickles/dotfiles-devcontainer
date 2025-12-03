@@ -137,6 +137,7 @@ shopt -s dotglob
 cp -R "${TEMPLATE_DIR}" "${BUILD_DIR}"
 shopt -u dotglob
 chmod -R u+rw "${BUILD_DIR}"
+echo "Build directory prepared at ${BUILD_DIR}"
 
 # Determine base image (allow override)
 BASE_IMAGE=$(awk '/^FROM/{print $2; exit}' "${BUILD_DIR}/.devcontainer/Dockerfile")
@@ -254,8 +255,14 @@ if [[ -d "${TEST_DIR}" ]]; then
   cp -Rp "${REPO_ROOT}/test/test-utils/"* "${DEST_DIR}/test-utils/"
   # Ensure relative imports work for tests living directly under test-project
   if [[ -f "${DEST_DIR}/test.sh" ]]; then
-    sed -i '' 's#source ../test-utils/#source ./test-utils/#' "${DEST_DIR}/test.sh"
+    sed -i'' -e 's#source ../test-utils/#source ./test-utils/#' "${DEST_DIR}/test.sh"
+  else
+    echo "test.sh not found under ${DEST_DIR}; listing contents:"
+    ls -la "${DEST_DIR}"
   fi
+  echo "test-project contents:"
+  ls -la "${DEST_DIR}"
+  ls -la "${DEST_DIR}/test-utils" || true
 fi
 
 echo "Building devcontainer (this may take a moment)..."
