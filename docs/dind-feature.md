@@ -31,4 +31,4 @@
 ## Validation status
 
 - `bats test/apply.bats`: pass (template references GHCR DinD and no vendored features).
-- `test/features/dind/test.sh`: pending; requires a base-image context with Docker engine bits (`dockerd` unavailable on local host during latest attempt).
+- `test/features/dind/test.sh`: currently skips when `dockerd` is unavailable; set `REQUIRE_DOCKER=true` when running in a base-image/devcontainer context that includes Docker engine bits.
