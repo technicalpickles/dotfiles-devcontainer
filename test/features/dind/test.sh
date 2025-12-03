@@ -13,6 +13,9 @@ if ! command -v dockerd >/dev/null 2>&1; then
 	exit 0
 fi
 
+echo "→ installing DinD feature locally to provision start-dind.sh"
+USERNAME="${USER:-$(id -un)}" bash ./src/dotfiles/.devcontainer/features/dind/install.sh
+
 echo "✓ starting dockerd via feature entrypoint"
 /usr/local/share/dind/start-dind.sh true
 
