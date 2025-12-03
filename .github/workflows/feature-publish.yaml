@@ -32,7 +32,7 @@ jobs:
       - name: Package DinD feature
         run: |
           mkdir -p tmp
-          devcontainer features package ./src/dotfiles/.devcontainer/features/dind --output ./tmp/dind-feature
+          devcontainer features package ./src/dotfiles/.devcontainer/features/dind --output-folder ./tmp/dind-feature --force-clean-output-folder
 
       - name: Validate DinD feature wiring
         run: bash test/features/dind/test.sh
