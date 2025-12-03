@@ -136,6 +136,7 @@ mkdir -p "$(dirname "${BUILD_DIR}")"
 shopt -s dotglob
 cp -R "${TEMPLATE_DIR}" "${BUILD_DIR}"
 shopt -u dotglob
+chmod -R u+rw "${BUILD_DIR}"
 
 # Determine base image (allow override)
 BASE_IMAGE=$(awk '/^FROM/{print $2; exit}' "${BUILD_DIR}/.devcontainer/Dockerfile")
@@ -185,7 +186,7 @@ if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
       fi
 
       OPTION_VALUE_ESCAPED=$(sed -e 's/[]\\/$*.^[]/\\&/g' <<<"${OPTION_VALUE}")
-      find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i '' "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
+      find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i'' -e "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
     done <<< "${OPTIONS}"
   fi
 fi
