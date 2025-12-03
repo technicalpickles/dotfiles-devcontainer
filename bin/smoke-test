@@ -147,13 +147,16 @@ fi
 
 if [[ -n "${BASE_IMAGE}" ]]; then
   if ! docker image inspect "${BASE_IMAGE}" >/dev/null 2>&1; then
+    echo "Base image not present locally: ${BASE_IMAGE}"
     if [[ "${PULL_BASE}" == "true" ]]; then
       echo "Pulling base image: ${BASE_IMAGE}"
-      docker pull "${BASE_IMAGE}"
+      if ! docker pull "${BASE_IMAGE}"; then
+        echo "Pull failed; building locally with bin/build-base --tag ${BASE_IMAGE}"
+        "${REPO_ROOT}/bin/build-base" --tag "${BASE_IMAGE}"
+      fi
     else
-      echo "Base image not present locally: ${BASE_IMAGE}" >&2
-      echo "Build it (bin/build-base --tag ${BASE_IMAGE}) or rerun with --pull-base." >&2
-      exit 1
+      echo "Building base image locally with bin/build-base --tag ${BASE_IMAGE}"
+      "${REPO_ROOT}/bin/build-base" --tag "${BASE_IMAGE}"
     fi
   fi
 
@@ -185,6 +188,27 @@ if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
       find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i '' "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
     done <<< "${OPTIONS}"
   fi
+fi
+
+# Vendor local DinD feature and rewrite features to avoid GHCR fetch when unpublished
+LOCAL_DIND_SRC="${REPO_ROOT}/src/dotfiles/.devcontainer/features/dind"
+LOCAL_DIND_DEST="${BUILD_DIR}/.devcontainer/features/dind"
+if [[ -d "${LOCAL_DIND_SRC}" ]]; then
+  mkdir -p "$(dirname "${LOCAL_DIND_DEST}")"
+  rm -rf "${LOCAL_DIND_DEST}"
+  cp -R "${LOCAL_DIND_SRC}" "${LOCAL_DIND_DEST}"
+  python3 - "${BUILD_DIR}/.devcontainer/devcontainer.json" <<'PY'
+import json, re, sys, pathlib
+path = pathlib.Path(sys.argv[1])
+raw = path.read_text()
+clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+obj = json.loads(clean)
+features = obj.get("features", {})
+ref = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0"
+if ref in features:
+    obj["features"] = {"./features/dind": {}}
+    path.write_text(json.dumps(obj, indent=2) + "\n")
+PY
 fi
 
 # Ensure DOTPICKLES_ROLE is set (default noop) inside the smoke-test container
@@ -225,7 +249,12 @@ if [[ -d "${TEST_DIR}" ]]; then
   DEST_DIR="${BUILD_DIR}/test-project"
   mkdir -p "${DEST_DIR}"
   cp -Rp "${TEST_DIR}"/* "${DEST_DIR}"
-  cp -Rp "${REPO_ROOT}/test/test-utils"/* "${DEST_DIR}"
+  mkdir -p "${DEST_DIR}/test-utils"
+  cp -Rp "${REPO_ROOT}/test/test-utils/"* "${DEST_DIR}/test-utils/"
+  # Ensure relative imports work for tests living directly under test-project
+  if [[ -f "${DEST_DIR}/test.sh" ]]; then
+    sed -i '' 's#source ../test-utils/#source ./test-utils/#' "${DEST_DIR}/test.sh"
+  fi
 fi
 
 echo "Building devcontainer (this may take a moment)..."
