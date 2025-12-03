@@ -2,9 +2,9 @@
 
 ## Versions and digests
 
-| Version | Digest                    | Notes                                                                        |
-| ------- | ------------------------- | ---------------------------------------------------------------------------- |
-| v0.1.0  | _TBD after first publish_ | Initial published wiring-only DinD feature aligned to base image Docker bits |
+| Version | Digest                                                                    | Notes                                                                                                                        |
+| ------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| v0.1.0  | `sha256:30eeba4b20d48247dde11bbab5b813a4b3748dc34014bebec46bf28e8b658020` | Initial published wiring-only DinD feature aligned to base image Docker bits (published via workflow `feature-publish.yaml`) |
 
 ## Publish checklist (maintainers)
 
@@ -30,5 +30,6 @@
 
 ## Validation status
 
+- `feature-publish.yaml`: pass (publishes v0.1.0, digest `sha256:30eeba4b20d48247dde11bbab5b813a4b3748dc34014bebec46bf28e8b658020`).
 - `bats test/apply.bats`: pass (template references GHCR DinD and no vendored features).
-- `test/features/dind/test.sh`: currently skips when `dockerd` is unavailable; set `REQUIRE_DOCKER=true` when running in a base-image/devcontainer context that includes Docker engine bits.
+- `test/features/dind/test.sh`: pass on GH Actions runner (installs feature locally, starts dockerd, verifies `docker info`); set `REQUIRE_DOCKER=true` when running in a base-image/devcontainer context that includes Docker engine bits.
