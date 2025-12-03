@@ -53,9 +53,10 @@ RUN curl https://mise.run | sh \
 # Install goss (pinned version)
 RUN curl -fsSL https://goss.rocks/install | GOSS_VER="${GOSS_VERSION}" GOSS_DST=/usr/local/bin sh
 
-# Dotfiles setup helper
+# Dotfiles setup helper + base post-create entrypoint
 COPY docker/base/setup-dotfiles /usr/local/bin/setup-dotfiles
-RUN chmod +x /usr/local/bin/setup-dotfiles
+COPY docker/base/devcontainer-post-create /usr/local/bin/devcontainer-post-create
+RUN chmod +x /usr/local/bin/setup-dotfiles /usr/local/bin/devcontainer-post-create
 
 USER vscode
 WORKDIR /home/vscode

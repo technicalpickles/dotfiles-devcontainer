@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load "./test-utils/dotfiles_fixture"
+
 setup() {
   REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
   APPLY="$REPO_ROOT/bin/apply"
@@ -9,6 +11,7 @@ teardown() {
   if [[ -n "${WORKDIR:-}" && -d "$WORKDIR" ]]; then
     rm -rf "$WORKDIR"
   fi
+  cleanup_dotfiles_fixtures
 }
 
 run_apply() {
@@ -155,12 +158,54 @@ assert_common_state() {
     echo "$output"
     return 1
   fi
+  run rg -F "devcontainer-post-create" "$WORKDIR/.devcontainer/post-create.sh"
+  if [[ "$status" -ne 0 ]]; then
+    echo "base entrypoint delegation missing in post-create.sh"
+    echo "$output"
+    return 1
+  fi
 }
 
 @test "default templating stays generic" {
-  run_apply default "https://github.com/technicalpickles/dotfiles.git" "main" "/usr/bin/fish" ""
-  # profile should derive from shell basename (fish)
-  assert_common_state "https://github.com/technicalpickles/dotfiles.git" "main" "/usr/bin/fish" "fish"
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+
+  run_apply default "$repo_url" "main" "/usr/bin/fish" ""
+  assert_common_state "$repo_url" "main" "/usr/bin/fish" "fish"
+}
+
+@test "dind feature references ghcr and is not vendored" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+
+  run_apply dind-ghcr "$repo_url" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  [ ! -d "$WORKDIR/.devcontainer/features" ]
+
+  local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
+  if [[ ! -f "$dc_json" ]]; then
+    echo "missing devcontainer.json at $dc_json"
+  fi
+  run node - "$dc_json" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const raw = fs.readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const expected = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0";
+  const features = obj.features || {};
+  const keys = Object.keys(features);
+  if (keys.length !== 1 || !features[expected]) {
+    console.error('feature reference mismatch', features);
+    process.exit(1);
+  }
+NODE
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output"
+  fi
+  [ "$status" -eq 0 ]
 }
 
 @test "shell override via env" {
@@ -169,8 +214,12 @@ assert_common_state() {
 }
 
 @test "profile name derived from shell path when not provided" {
-  run_apply zsh-derived "https://github.com/example/dots.git" "main" "/bin/zsh" ""
-  assert_common_state "https://github.com/example/dots.git" "main" "/bin/zsh" "zsh"
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+
+  run_apply zsh-derived "$repo_url" "main" "/bin/zsh" ""
+  assert_common_state "$repo_url" "main" "/bin/zsh" "zsh"
 }
 
 @test "platform auto-detected and recorded in devcontainer build options" {
@@ -183,7 +232,11 @@ assert_common_state() {
     skip "unknown host arch for platform detection test"
   fi
 
-  run_apply platform-auto "https://github.com/technicalpickles/dotfiles.git" "main" "/usr/bin/fish" ""
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+
+  run_apply platform-auto "$repo_url" "main" "/usr/bin/fish" ""
   [ "$status" -eq 0 ]
 
   local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
@@ -218,4 +271,31 @@ if (!opts.includes('--platform=linux/arm64')) {
 }
 NODE
   [ "$status" -eq 0 ]
+}
+
+@test "post-create fails clearly when base entrypoint is missing" {
+  run_apply missing-base "https://github.com/example/dots.git" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  run /bin/bash "$WORKDIR/.devcontainer/post-create.sh"
+  [ "$status" -ne 0 ]
+  echo "$output"
+  echo "$output" | /usr/bin/grep -q "Expected base entrypoint"
+}
+
+@test "post-create fails when base entrypoint exists but is not executable" {
+  run_apply non-executable-base "https://github.com/example/dots.git" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  local fake_base="$WORKDIR/fake-devcontainer-post-create"
+  echo "#!/usr/bin/env bash" > "$fake_base"
+  chmod 644 "$fake_base"
+
+  [ -f "$fake_base" ]
+  [ ! -x "$fake_base" ]
+
+  run env BASE_POST_CREATE="$fake_base" /bin/bash "$WORKDIR/.devcontainer/post-create.sh"
+  [ "$status" -ne 0 ]
+  echo "$output"
+  echo "$output" | /usr/bin/grep -q "Expected base entrypoint"
 }

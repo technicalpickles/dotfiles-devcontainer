@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running base devcontainer post-create..."
+
+WORKSPACE_DIR="${WORKSPACE_DIR:-$(pwd)}"
+DEFAULT_WORKSPACE_CANDIDATES=(
+  "/workspace"
+  "/workspaces/${LOCAL_WORKSPACE_FOLDER_NAME:-}"
+)
+
+for candidate in "${DEFAULT_WORKSPACE_CANDIDATES[@]}"; do
+  if [[ -n "$candidate" && -d "$candidate/.devcontainer" ]]; then
+    WORKSPACE_DIR="$candidate"
+    break
+  fi
+done
+
+HOOK_PATH="${HOOK_PATH:-${WORKSPACE_DIR}/.devcontainer/hooks/post-create}"
+HOOK_ORDER="${HOOK_ORDER:-before}"
+HOOK_RAN="false"
+
+is_skipped() {
+  local value="${1:-}"
+  [[ "$value" == "1" || "$value" == "true" || "$value" == "yes" ]]
+}
+
+run_hook() {
+  local reason="$1"
+  if [[ "$HOOK_RAN" == "true" ]]; then
+    echo "Skipping hook (already ran) - ${reason}"
+    return 0
+  fi
+
+  if [[ ! -e "$HOOK_PATH" ]]; then
+    echo "No hook found at ${HOOK_PATH} (${reason})"
+    return 0
+  fi
+
+  if [[ ! -x "$HOOK_PATH" ]]; then
+    echo "Hook found but not executable: ${HOOK_PATH}"
+    return 1
+  fi
+
+  echo "Running project hook (${reason}) at ${HOOK_PATH}"
+  (cd "$WORKSPACE_DIR" && "$HOOK_PATH")
+  HOOK_RAN="true"
+}
+
+require_dotfiles_inputs() {
+  if [[ -z "${DOTFILES_REPO:-}" || -z "${DOTFILES_BRANCH:-}" ]]; then
+    echo "DOTFILES_REPO and DOTFILES_BRANCH are required for devcontainer-post-create"
+    exit 1
+  fi
+}
+
+sync_dotfiles() {
+  if is_skipped "${SKIP_DOTFILES:-}"; then
+    echo "⏭  Skipping dotfiles sync (SKIP_DOTFILES=1)"
+    return 0
+  fi
+
+  require_dotfiles_inputs
+
+  local extra_env=()
+  for var in SKIP_MISE SKIP_FISH SKIP_GH SKIP_AWS; do
+    if [[ -n "${!var:-}" ]]; then
+      extra_env+=(--env "${var}=${!var}")
+    fi
+  done
+
+  if [[ "${#extra_env[@]}" -gt 0 ]]; then
+    printf "Forwarding dotfiles env:"
+    for arg in "${extra_env[@]}"; do
+      printf " %s" "${arg#--env }"
+    done
+    printf "\n"
+  fi
+
+  echo "Syncing dotfiles (${DOTFILES_REPO}@${DOTFILES_BRANCH})..."
+  setup-dotfiles --repo "${DOTFILES_REPO}" --branch "${DOTFILES_BRANCH}" --env "DOCKER_BUILD=false" "${extra_env[@]}"
+  echo "Dotfiles sync complete"
+}
+
+refresh_shell_prompt() {
+  if is_skipped "${SKIP_FISH:-}"; then
+    echo "Skipping shell refresh (SKIP_FISH=1)"
+    return 0
+  fi
+
+  if command -v fish >/dev/null 2>&1; then
+    # Ensure starship/fish configuration is initialized for new shells
+    fish -lc 'true' >/dev/null 2>&1 || true
+    if command -v starship >/dev/null 2>&1; then
+      starship --version >/dev/null 2>&1 || true
+    fi
+    echo "Shell refresh complete (fish/starship)"
+  else
+    echo "Fish shell not installed; skipping shell refresh"
+  fi
+}
+
+configure_git() {
+  echo "Configuring git safe.directory for workspace (${WORKSPACE_DIR})..."
+  git config --global --add safe.directory "${WORKSPACE_DIR}" >/dev/null 2>&1 || true
+  git config --global --add safe.directory "/workspaces/*" >/dev/null 2>&1 || true
+  echo "Git configuration complete"
+}
+
+initialize_submodules() {
+  if is_skipped "${SKIP_SUBMODULES:-}"; then
+    echo "Skipping git submodules (SKIP_SUBMODULES=1)"
+    return 0
+  fi
+
+  if [[ -f "${WORKSPACE_DIR}/.gitmodules" && -d "${WORKSPACE_DIR}/.git" ]]; then
+    echo "Checking git submodules..."
+    if git -C "${WORKSPACE_DIR}" submodule status | grep -q '^-'; then
+      echo "Initializing git submodules..."
+      git -C "${WORKSPACE_DIR}" submodule update --init --recursive
+      echo "Git submodules initialized"
+    else
+      echo "Git submodules already initialized"
+    fi
+  else
+    echo "No git submodules found"
+  fi
+}
+
+if [[ "$HOOK_ORDER" != "before" && "$HOOK_ORDER" != "after" ]]; then
+  echo "Unknown HOOK_ORDER=${HOOK_ORDER}, defaulting to 'before'"
+  HOOK_ORDER="before"
+fi
+
+echo "Workspace directory: ${WORKSPACE_DIR}"
+echo "Hook order: ${HOOK_ORDER}"
+echo "Hook path: ${HOOK_PATH}"
+
+if [[ "$HOOK_ORDER" == "before" ]]; then
+  run_hook "before base steps"
+fi
+
+sync_dotfiles
+refresh_shell_prompt
+configure_git
+initialize_submodules
+
+if [[ "$HOOK_ORDER" == "after" ]]; then
+  run_hook "after base steps"
+fi
+
+echo "✅ Base post-create complete"

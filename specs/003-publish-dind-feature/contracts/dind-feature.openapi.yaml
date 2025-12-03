@@ -1,0 +1,138 @@
+openapi: 3.1.0
+info:
+  title: DinD Feature Publishing and Consumption
+  version: 0.1.0
+paths:
+  /features/dind/publish:
+    post:
+      summary: Publish a new Docker-in-Docker feature version to GHCR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeaturePublishRequest"
+      responses:
+        "201":
+          description: Published feature metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureVersion"
+        "409":
+          description: Version already exists
+  /features/dind/versions:
+    get:
+      summary: List available published feature versions
+      parameters:
+        - in: query
+          name: includeDeprecated
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Feature versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeatureVersion"
+  /templates/{templateId}/dind-feature/reference:
+    put:
+      summary: Update template to reference a published DinD feature version/digest
+      parameters:
+        - in: path
+          name: templateId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeatureReferenceUpdate"
+      responses:
+        "200":
+          description: Updated template reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureVersion"
+        "412":
+          description: Base image digest mismatch with validated publish
+  /features/dind/fallback-guidance:
+    get:
+      summary: Retrieve fallback steps when registry access fails
+      responses:
+        "200":
+          description: Fallback guidance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FallbackGuidance"
+components:
+  schemas:
+    FeaturePublishRequest:
+      type: object
+      required: [version, sourcePath]
+      properties:
+        version:
+          type: string
+          description: Semver for the feature release
+        sourcePath:
+          type: string
+          description: Path to feature source (tarball or repo subpath)
+        runTests:
+          type: boolean
+          default: true
+          description: Run package + feature tests before publish
+    FeatureVersion:
+      type: object
+      properties:
+        version:
+          type: string
+        digest:
+          type: string
+        registry:
+          type: string
+          example: ghcr.io/technicalpickles/devcontainer-features/dind
+        status:
+          type: string
+          enum: [published, deprecated]
+        validatedWith:
+          type: object
+          properties:
+            baseImageDigest:
+              type: string
+            tests:
+              type: array
+              items:
+                type: string
+                example: bats test/apply.bats
+    FeatureReferenceUpdate:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: string
+          description: Feature version to reference; digest optional if available
+        digest:
+          type: string
+          description: Optional digest pin for outage resilience
+        baseImageDigest:
+          type: string
+          description: Base image digest the template uses for this reference
+    FallbackGuidance:
+      type: object
+      properties:
+        steps:
+          type: array
+          items:
+            type: string
+          example:
+            - Retry pull with backoff on pinned version/digest
+            - Switch to known-good digest from release notes
+            - Temporarily vendor feature with cleanup reminder post-outage
