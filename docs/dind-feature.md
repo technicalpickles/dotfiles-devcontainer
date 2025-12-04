@@ -33,3 +33,4 @@
 - `feature-publish.yaml`: pass (publishes v0.1.0, digest `sha256:30eeba4b20d48247dde11bbab5b813a4b3748dc34014bebec46bf28e8b658020`).
 - `bats test/apply.bats`: pass (template references GHCR DinD and no vendored features).
 - `test/features/dind/test.sh`: pass on GH Actions runner (installs feature locally, starts dockerd, verifies `docker info`); set `REQUIRE_DOCKER=true` when running in a base-image/devcontainer context that includes Docker engine bits.
+- `bin/smoke-test --template dotfiles`: pass against base `ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b` (Docker 29.1.2; hello-world succeeds).

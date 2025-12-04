@@ -61,7 +61,7 @@
 - [x] T009 [US2] Add GHCR publish workflow using `devcontainer features publish` with package/test steps and digest summary in `.github/workflows/feature-publish.yaml`
 - [x] T010 [P] [US2] Wire `bin/publish-dind-feature` inputs/validation to support CI and local publishes for `src/dotfiles/.devcontainer/features/dind/`
 - [x] T011 [US2] Document maintainer publish + template-update steps (semver vs digest pins) in `docs/ci.md`
-- [ ] T012 [P] [US2] Record published version/digest entry and align template reference after publish in `docs/dind-feature.md` and `src/dotfiles/.devcontainer/devcontainer.json`
+- [x] T012 [P] [US2] Record published version/digest entry and align template reference after publish in `docs/dind-feature.md` and `src/dotfiles/.devcontainer/devcontainer.json`
 
 **Checkpoint**: User Story 2 functional and testable independently
 
@@ -85,7 +85,7 @@
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] Run DinD feature validation + `bats test/apply.bats` and record results/versions in `docs/dind-feature.md`
+- [x] T016 [P] Run DinD feature validation + `bats test/apply.bats` and record results/versions in `docs/dind-feature.md`
 - [x] T017 Align quickstart and maintainer docs after implementation (cross-check `quickstart.md`, `README.md`, `docs/ci.md`, `docs/dind-feature.md`)
 
 ---
