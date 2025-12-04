@@ -9,7 +9,7 @@
 ## Consume the published feature
 
 1. Apply the template: `bin/apply` into a target repo (no `.devcontainer/features` vendoring expected).
-2. Reference the feature in `devcontainer-template.json`:
+2. Reference the feature in `src/dotfiles/.devcontainer/devcontainer.json` (start from the latest released tag when creating the template):
 
    ```json
    "features": {
@@ -18,7 +18,7 @@
    ```
 
 3. Build the devcontainer: `bin/build` (or VS Code/Codespaces reload) and verify Docker works without local feature files.
-4. Pin or update: change the version tag (or switch to a digest like `ghcr.io/.../dind@sha256:<digest>`) in the `features` block; run `bin/build` again.
+4. Pin or update: change the version tag (or switch to a digest like `ghcr.io/.../dind@sha256:<digest>`) in the `features` block; run `bin/build` again. CI/release flows must resolve and pin the digest for deterministic builds.
 
 ## Fallback when registry is unreachable
 
@@ -29,6 +29,6 @@
 ## Publish and update template reference
 
 1. Package + publish from CI: `devcontainer features publish ./src/dotfiles/.devcontainer/features/dind --registry ghcr.io/technicalpickles --namespace devcontainer-features`.
-2. Verify publish output (version, digest) and update the template `features` reference accordingly.
-3. Run `bats test/apply.bats` to confirm template builds with the published feature; keep base-image Goss smoke passing for Docker component alignment.
-4. Document the new version and fallback digest in release notes and `devcontainer-template.json` comments if present.
+2. Verify publish output (version, digest) and update the template `features` reference accordingly (record the resolved digest even if the template starts from the latest released tag).
+3. Run `bats test/apply.bats` to confirm template builds with the published feature; keep base-image Goss smoke passing for Docker component alignment; confirm build time stays within +10% or +30s of baseline on GHA runners.
+4. Document the new version and fallback digest in release notes and `src/dotfiles/.devcontainer/devcontainer.json` comments if present.

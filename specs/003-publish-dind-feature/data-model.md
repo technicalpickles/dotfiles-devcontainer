@@ -10,7 +10,7 @@
 
 ### DevcontainerTemplate
 
-- Fields: template version, base image digest, feature references (version/digest for DinD), dotfiles/shell options, fallback guidance for registry outages, validation results (`bats test/apply.bats`).
+- Fields: template version, base image digest, feature references (latest released tag at creation plus resolved digest for DinD), dotfiles/shell options, fallback guidance for registry outages, validation results (`bats test/apply.bats`), performance baseline/tolerance.
 - Relationships: references PublishedFeatureArtifact; builds on BaseImage.
 - State: draft -> validated (tests passing) -> released (template published).
 

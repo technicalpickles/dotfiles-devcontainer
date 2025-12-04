@@ -8,9 +8,9 @@ Alternatives considered: Direct `docker buildx build/push` of the feature (would
 
 ## Versioning and pinning strategy
 
-Decision: Use semantic versions for feature publishes (e.g., `v0.1.0`) and reference a specific version (or digest when supported) in the template’s `features` block to keep consuming repos free of vendored assets while allowing controlled updates.
-Rationale: Semver communicates change expectations, and explicit version/digest pins satisfy stability and outage recovery requirements without copying the feature.
-Alternatives considered: Floating `latest` tag (breaks determinism); embedding feature files in the template (bloats consumers, violates spec intent).
+Decision: Use semantic versions for feature publishes (e.g., `v0.1.0`) and reference a specific version (or digest when supported) in the template’s `features` block to keep consuming repos free of vendored assets while allowing controlled updates. Template creation starts from the latest released tag, but CI/release flows resolve and pin the digest for determinism.
+Rationale: Semver communicates change expectations, and explicit version/digest pins satisfy stability and outage recovery requirements without copying the feature; starting from the latest released tag simplifies initial template creation while still converging to a pinned digest in automation.
+Alternatives considered: Floating `latest` tag (breaks determinism in CI/release); embedding feature files in the template (bloats consumers, violates spec intent).
 
 ## Template consumption and fallback for outages
 
@@ -20,9 +20,9 @@ Alternatives considered: Always vendor a copy in the template (contradicts goal)
 
 ## Testing and validation coverage
 
-Decision: Validate publishes with `devcontainer features publish` built-in packaging/tests, run `bats test/apply.bats` to ensure template references resolve without local feature files, and keep base-image Goss smoke for Docker bits alignment.
-Rationale: Ensures the feature packages correctly, the template wiring remains intact, and Docker components match expectations baked into the base image.
-Alternatives considered: Ad-hoc manual testing (non-repeatable); skipping Goss/base checks (risks drift between feature wiring and baked Docker bits).
+Decision: Validate publishes with `devcontainer features publish` built-in packaging/tests, run `bats test/apply.bats` to ensure template references resolve without local feature files, and keep base-image Goss smoke for Docker bits alignment; enforce build-time tolerance within +10% or +30s of baseline on GHA runners.
+Rationale: Ensures the feature packages correctly, the template wiring remains intact, Docker components match expectations baked into the base image, and performance remains within clarified tolerance.
+Alternatives considered: Ad-hoc manual testing (non-repeatable); skipping Goss/base checks (risks drift between feature wiring and baked Docker bits); omitting performance checks (risks regressions).
 
 ## Privileged Docker wiring alignment
 
