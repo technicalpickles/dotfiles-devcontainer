@@ -41,17 +41,18 @@ fi
 ensure_directories() {
   sudo_if mkdir -p "$(dirname "$socket_path")" "$DATA_ROOT" "$(dirname "$LOGFILE")"
   sudo_if chown -R root:root "$DATA_ROOT" "$(dirname "$socket_path")"
+  sudo_if touch "$LOGFILE"
+  sudo_if chown root:root "$LOGFILE"
 }
 
 start_dockerd() {
   if command -v dockerd >/dev/null 2>&1; then
-    sudo_if dockerd \
-      --host="unix://${socket_path}" \
-      --data-root="$DATA_ROOT" \
-      --exec-root=/var/run/docker \
-      --group=vscode \
-      --log-level="$DOCKERD_LOG_LEVEL" \
-      >"$LOGFILE" 2>&1 &
+    local cmd="dockerd --host=\"unix://${socket_path}\" --data-root=\"${DATA_ROOT}\" --exec-root=/var/run/docker --group=vscode --log-level=\"${DOCKERD_LOG_LEVEL}\""
+    if [ "$(id -u)" -ne 0 ]; then
+      sudo sh -c "${cmd} >\"${LOGFILE}\" 2>&1 &"
+    else
+      sh -c "${cmd} >\"${LOGFILE}\" 2>&1 &"
+    fi
   else
     echo "Docker engine not found. Base image must include Docker components compatible with this feature." >&2
     exit 1
