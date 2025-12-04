@@ -20,6 +20,7 @@ TARGET_DIR=""
 VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
+DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -173,6 +174,36 @@ detect_platform() {
     echo "⚠️  Unsupported or unknown host architecture (${arch:-unknown}); not setting --platform. Docker may emit a platform warning."
     PLATFORM_SELECTED=""
   fi
+}
+
+prune_vendored_features() {
+  local features_dir="$TARGET_DIR/.devcontainer/features"
+  if [[ -d "$features_dir" ]]; then
+    echo "🧹 Removing vendored features at ${features_dir} (template consumes published DinD feature from GHCR)"
+    rm -rf "$features_dir"
+  fi
+}
+
+override_dind_feature_ref() {
+  if [[ -z "$DIND_FEATURE_REF" ]]; then
+    return 0
+  fi
+  local dc_json="$TARGET_DIR/.devcontainer/devcontainer.json"
+  if [[ ! -f "$dc_json" ]]; then
+    echo "⚠️  Unable to pin DinD feature reference; ${dc_json} not found" >&2
+    return 0
+  fi
+  echo "🔒 Pinning DinD feature reference to ${DIND_FEATURE_REF}"
+  python3 - "$dc_json" "$DIND_FEATURE_REF" <<'PY'
+import json, sys, re, pathlib
+path = pathlib.Path(sys.argv[1])
+ref = sys.argv[2]
+raw = path.read_text()
+clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+obj = json.loads(clean)
+obj["features"] = {ref: {}}
+path.write_text(json.dumps(obj, indent=2) + "\n")
+PY
 }
 
 usage() {
@@ -347,6 +378,9 @@ echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
 echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
 echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
+if [[ -n "$DIND_FEATURE_REF" ]]; then
+  echo "  DinD feature ref override: $DIND_FEATURE_REF"
+fi
 # Temporarily disable unbound variable check for associative array
 set +u
 if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
@@ -483,6 +517,8 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
   fi
 
+  override_dind_feature_ref
+  prune_vendored_features
   echo "✓ Template files copied and configured"
 else
   # Running standalone - use devcontainer CLI with published template
@@ -537,6 +573,8 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
   fi
 
+  override_dind_feature_ref
+  prune_vendored_features
   echo "✓ Template applied via devcontainer CLI"
 fi
 

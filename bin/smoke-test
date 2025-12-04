@@ -206,7 +206,7 @@ raw = path.read_text()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
 obj = json.loads(clean)
 features = obj.get("features", {})
-ref = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0"
+ref = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1"
 if ref in features:
     obj["features"] = {"./features/dind": {}}
     path.write_text(json.dumps(obj, indent=2) + "\n")

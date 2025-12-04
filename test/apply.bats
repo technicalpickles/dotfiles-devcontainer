@@ -194,17 +194,60 @@ const fs = require('fs');
 const path = process.argv[2];
 const raw = fs.readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
 const obj = JSON.parse(raw);
-const expected = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0";
-  const features = obj.features || {};
-  const keys = Object.keys(features);
-  if (keys.length !== 1 || !features[expected]) {
-    console.error('feature reference mismatch', features);
-    process.exit(1);
-  }
+const expected = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1";
+const features = obj.features || {};
+const keys = Object.keys(features);
+if (keys.length !== 1 || !features[expected]) {
+  console.error('feature reference mismatch', features);
+  process.exit(1);
+}
 NODE
   if [[ "$status" -ne 0 ]]; then
     echo "$output"
   fi
+  [ "$status" -eq 0 ]
+
+  run node - "$dc_json" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const raw = fs.readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const dockerBuildArg = ((obj.build || {}).args || {}).DOCKER_BUILD;
+if (dockerBuildArg !== 'true') {
+  console.error('DOCKER_BUILD arg not enforced for prebaked Docker bits', dockerBuildArg);
+  process.exit(1);
+}
+NODE
+  [ "$status" -eq 0 ]
+
+  run rg -n "ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:" "$WORKDIR/.devcontainer/Dockerfile"
+  [ "$status" -eq 0 ]
+}
+
+@test "pinned DinD digest can override feature ref for fallback" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+  local pinned_ref="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:deadbeef"
+
+  DIND_FEATURE_REF="$pinned_ref" run_apply dind-pinned "$repo_url" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  [ ! -d "$WORKDIR/.devcontainer/features" ]
+
+  local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
+  run node - "$dc_json" "$pinned_ref" <<'NODE'
+const fs = require('fs');
+const [file, expected] = process.argv.slice(2);
+const raw = fs.readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const features = obj.features || {};
+const keys = Object.keys(features);
+if (keys.length !== 1 || keys[0] !== expected) {
+  console.error('pinned ref mismatch', features);
+  process.exit(1);
+}
+NODE
   [ "$status" -eq 0 ]
 }
 

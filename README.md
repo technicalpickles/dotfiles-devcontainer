@@ -125,9 +125,9 @@ devcontainer templates apply \
 - Features block (pinned to the published version):
 
 ```jsonc
-"features": {
-  "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0": {}
-}
+  "features": {
+    "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1": {}
+  }
 ```
 
 - To update/pin: change the version (or digest when published) in the features block, rebuild, and verify Docker works.

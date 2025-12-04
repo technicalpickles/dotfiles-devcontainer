@@ -1,0 +1,72 @@
+name: "Pin DinD Feature Digest"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Feature version/tag to resolve (defaults to devcontainer-feature.json)"
+        required: false
+        type: string
+      ref:
+        description: "Full feature ref to resolve (overrides version input)"
+        required: false
+        type: string
+
+env:
+  FEATURE_NAMESPACE: technicalpickles/devcontainer-features
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve digest
+        id: resolve
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          DEFAULT_VERSION=$(node -e "console.log(require('./src/dotfiles/.devcontainer/features/dind/devcontainer-feature.json').version)")
+          REF="${INPUT_REF:-ghcr.io/${FEATURE_NAMESPACE}/dind:${INPUT_VERSION:-$DEFAULT_VERSION}}"
+          echo "Resolving digest for ${REF}"
+          DIGEST=$(docker buildx imagetools inspect "$REF" | awk '/^Digest: / {print $2; exit}')
+          if [[ -z "$DIGEST" ]]; then
+            echo "Failed to resolve digest for ${REF}" >&2
+            exit 1
+          fi
+          PINNED="${REF%@*}@${DIGEST}"
+          {
+            echo "digest=${DIGEST}"
+            echo "ref=${REF}"
+            echo "pinned=${PINNED}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## DinD feature digest"
+            echo "- Ref: ${REF}"
+            echo "- Digest: ${DIGEST}"
+            echo "- Pinned snippet:"
+            echo ""
+            echo '```json'
+            echo "{\"${PINNED}\": {}}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

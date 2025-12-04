@@ -37,6 +37,8 @@ socket_path="${SOCKET#unix://}"
 if [[ "$SOCKET" != unix://* ]]; then
   socket_path="/var/run/docker.sock"
 fi
+DOCKER_HOST_EFFECTIVE="unix://${socket_path}"
+export DOCKER_HOST="${DOCKER_HOST_EFFECTIVE}"
 
 ensure_directories() {
   sudo_if mkdir -p "$(dirname "$socket_path")" "$DATA_ROOT" "$(dirname "$LOGFILE")"
@@ -47,7 +49,7 @@ ensure_directories() {
 
 start_dockerd() {
   if command -v dockerd >/dev/null 2>&1; then
-    local cmd="dockerd --host=\"unix://${socket_path}\" --data-root=\"${DATA_ROOT}\" --exec-root=/var/run/docker --group=vscode --log-level=\"${DOCKERD_LOG_LEVEL}\""
+    local cmd="dockerd --host=\"${DOCKER_HOST_EFFECTIVE}\" --data-root=\"${DATA_ROOT}\" --exec-root=/var/run/docker --group=vscode --log-level=\"${DOCKERD_LOG_LEVEL}\""
     if [ "$(id -u)" -ne 0 ]; then
       sudo sh -c "${cmd} >\"${LOGFILE}\" 2>&1 &"
     else
@@ -63,7 +65,7 @@ wait_for_docker() {
   local retries=30
   local i
   for i in $(seq 1 "$retries"); do
-    if DOCKER_HOST="unix://${socket_path}" docker info >/dev/null 2>&1; then
+    if DOCKER_HOST="${DOCKER_HOST_EFFECTIVE}" docker info >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
@@ -73,6 +75,8 @@ wait_for_docker() {
 }
 
 ensure_directories
+
+echo "→ DinD wiring using ${DOCKER_HOST_EFFECTIVE} (data root ${DATA_ROOT}, log ${LOGFILE})"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker CLI not found. Base image must include Docker CLI alongside dockerd for DinD feature." >&2

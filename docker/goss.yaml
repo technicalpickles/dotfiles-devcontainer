@@ -40,6 +40,12 @@ command:
   devcontainer-post-create-hook-path:
     exec: "grep -q '/.devcontainer/hooks/post-create' /usr/local/bin/devcontainer-post-create"
     exit-status: 0
+  docker-cli-version:
+    exec: "docker --version"
+    exit-status: 0
+  dockerd-version:
+    exec: "dockerd --version"
+    exit-status: 0
 
 file:
   /usr/local/bin/devcontainer-post-create:

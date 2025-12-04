@@ -8,7 +8,7 @@ Alternatives considered: Direct `docker buildx build/push` of the feature (would
 
 ## Versioning and pinning strategy
 
-Decision: Use semantic versions for feature publishes (e.g., `v0.1.0`) and reference a specific version (or digest when supported) in the template’s `features` block to keep consuming repos free of vendored assets while allowing controlled updates. Template creation starts from the latest released tag, but CI/release flows resolve and pin the digest for determinism.
+Decision: Use semantic versions for feature publishes (e.g., `v0.1.x`) and reference a specific version (or digest when supported) in the template’s `features` block to keep consuming repos free of vendored assets while allowing controlled updates. Template creation starts from the latest released tag, but CI/release flows resolve and pin the digest for determinism.
 Rationale: Semver communicates change expectations, and explicit version/digest pins satisfy stability and outage recovery requirements without copying the feature; starting from the latest released tag simplifies initial template creation while still converging to a pinned digest in automation.
 Alternatives considered: Floating `latest` tag (breaks determinism in CI/release); embedding feature files in the template (bloats consumers, violates spec intent).
 
