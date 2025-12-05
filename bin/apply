@@ -21,6 +21,7 @@ VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
 DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
+KEEP_VENDORED_FEATURES=false
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -178,6 +179,12 @@ detect_platform() {
 
 prune_vendored_features() {
   local features_dir="$TARGET_DIR/.devcontainer/features"
+  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+    if [[ -d "$features_dir" ]]; then
+      echo "ℹ️  Keeping vendored features at ${features_dir} (local DinD feature ref in use)"
+    fi
+    return 0
+  fi
   if [[ -d "$features_dir" ]]; then
     echo "🧹 Removing vendored features at ${features_dir} (template consumes published DinD feature from GHCR)"
     rm -rf "$features_dir"
@@ -194,16 +201,57 @@ override_dind_feature_ref() {
     return 0
   fi
   echo "🔒 Pinning DinD feature reference to ${DIND_FEATURE_REF}"
-  python3 - "$dc_json" "$DIND_FEATURE_REF" <<'PY'
-import json, sys, re, pathlib
+  python3 - "$dc_json" "$DIND_FEATURE_REF" "$TARGET_DIR" <<'PY'
+import json, sys, re, pathlib, os
 path = pathlib.Path(sys.argv[1])
-ref = sys.argv[2]
+ref_raw = sys.argv[2]
+workspace = pathlib.Path(sys.argv[3])
+dc_dir = path.parent
 raw = path.read_text()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
 obj = json.loads(clean)
-obj["features"] = {ref: {}}
+
+def normalize_ref(raw_ref: str) -> str:
+    sanitized = raw_ref
+    for prefix in ("./.devcontainer/", ".devcontainer/"):
+        if sanitized.startswith(prefix):
+            sanitized = "./" + sanitized[len(prefix):]
+            break
+
+    if sanitized.startswith("file:"):
+        ref_path = pathlib.Path(sanitized[5:])
+    elif sanitized.startswith(("./", "../")):
+        ref_path = pathlib.Path(sanitized)
+    elif sanitized.startswith("/"):
+        ref_path = pathlib.Path(sanitized)
+    else:
+        return sanitized  # non-local ref, leave as-is
+
+    base_dir = dc_dir
+    abs_ref = ref_path if ref_path.is_absolute() else (base_dir / ref_path).resolve()
+
+    try:
+        abs_ref.relative_to(dc_dir)
+    except ValueError:
+        raise SystemExit("Local DinD feature must be inside the .devcontainer/ folder")
+
+    rel_ref = os.path.relpath(abs_ref, dc_dir)
+    if not rel_ref.startswith("."):
+        rel_ref = f"./{rel_ref}"
+    return rel_ref
+
+normalized_ref = normalize_ref(ref_raw)
+obj["features"] = {normalized_ref: {}}
 path.write_text(json.dumps(obj, indent=2) + "\n")
 PY
+}
+
+is_local_dind_ref() {
+  local ref="$1"
+  if [[ -z "$ref" ]]; then
+    return 1
+  fi
+  [[ "$ref" =~ ^(\.\/|/|file:) ]]
 }
 
 usage() {
@@ -350,6 +398,10 @@ else
   echo "   Repo: $DOTFILES_REPO"
 fi
 
+if is_local_dind_ref "$DIND_FEATURE_REF"; then
+  KEEP_VENDORED_FEATURES=true
+fi
+
 echo
 echo "Dotfiles Dev Container Template Applier"
 echo "========================================"
@@ -380,6 +432,9 @@ echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
 echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
 if [[ -n "$DIND_FEATURE_REF" ]]; then
   echo "  DinD feature ref override: $DIND_FEATURE_REF"
+  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+    echo "  DinD feature source: local (vendored features will be kept)"
+  fi
 fi
 # Temporarily disable unbound variable check for associative array
 set +u
@@ -495,6 +550,12 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/post-create.sh
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/post-create.sh
   rm .devcontainer/post-create.sh.bak
+
+  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+    echo "📦 Copying vendored features for local ref"
+    mkdir -p .devcontainer/features
+    cp -R "$TEMPLATE_SOURCE/.devcontainer/features/." .devcontainer/features/
+  fi
 
   if [[ -n "$PLATFORM_SELECTED" ]]; then
     python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json <<'PY'

@@ -54,6 +54,12 @@
 3. If GHCR remains unavailable, temporarily vendor the feature files from `src/dotfiles/.devcontainer/features/dind/` with a clear cleanup reminder to remove them once registry access returns.
 4. After recovery, restore the pinned GHCR reference, remove any vendored feature files from consuming repos, and record the digest + validation evidence in this document.
 
+### Local development before publish
+
+- Use the vendored feature source by applying with a local ref: `DIND_FEATURE_REF=./features/dind bin/apply <target>`. This keeps `.devcontainer/features/dind/` and points `devcontainer.json` at it instead of GHCR.
+- Build/up the devcontainer normally; changes to the local feature source are picked up without needing GHCR access.
+- Once the feature is published, re-run `bin/apply` without `DIND_FEATURE_REF` (or with a pinned digest) to restore the registry reference and remove the vendored feature directory.
+
 ## Validation status
 
 - v0.1.1: pending publish; use `publish-dind-feature.yml` for devcontainer packaging/tests and record digest from the JSON summary under `tmp/dind-feature-publish.json`.
@@ -74,4 +80,5 @@
   ```
 
   This runs `test/features/dind/test.sh` inside the devcontainer with privileged Docker and the local feature source. Requires host Docker with privileged support.
+
 - Direct host run of `test/features/dind/test.sh` needs a local dockerd; otherwise it will exit early with a missing Docker engine warning.
