@@ -28,7 +28,7 @@ bats test/apply.bats
 ## Test Cases (planned in `test/apply.bats`)
 
 1. **Default templating is generic**
-   - Run `./bin/apply` into a temp dir with defaults.
+   - Run `./bin/apply ci-unpinned` into a temp dir with defaults.
    - Assert no `${templateOption:...}` strings remain.
    - Assert `DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git`, branch `main`, shell `/usr/bin/fish`, profile `fish` in `devcontainer.json`.
    - Dockerfile contains `chsh -s "/usr/bin/fish"`.

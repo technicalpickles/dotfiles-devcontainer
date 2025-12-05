@@ -14,10 +14,11 @@
 
 ## DinD feature publishing
 
-- Publish via workflow `.github/workflows/feature-publish.yaml` (manual `workflow_dispatch`) or locally with `bin/publish-dind-feature`.
+- Publish via workflow `.github/workflows/publish-dind-feature.yml` (manual `workflow_dispatch`) or locally with `bin/publish-dind-feature`.
 - Ensure Docker engine bits remain baked into the base image; the feature only wires privileged Docker-in-Docker startup.
 - Validation steps: `devcontainer features package` to confirm metadata; `test/features/dind/test.sh` to sanity-check wiring; `bats test/apply.bats` to ensure template references the GHCR feature and does not vendor feature files.
 - After publish: record version + digest in `docs/dind-feature.md` and verify `src/dotfiles/.devcontainer/devcontainer.json` references the published tag/digest.
+- Smoke: `bin/smoke-test --base-image <tag-or-digest>` runs with the devcontainer CLI and now always executes the DinD wiring test inside the container. Requires host Docker with `--privileged` support; override base image when testing local builds.
 
 ## Release workflow expectations
 

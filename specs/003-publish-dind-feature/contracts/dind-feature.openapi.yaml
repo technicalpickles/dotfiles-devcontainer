@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DinD Feature Publishing and Consumption
-  version: 0.1.0
+  version: 0.1.1
 paths:
   /features/dind/publish:
     post:

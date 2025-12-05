@@ -1,8 +1,8 @@
 {
   "id": "dind",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Docker in Docker (wiring only)",
-  "description": "Configures Docker-in-Docker wiring for dotfiles devcontainer using Docker bits baked into the base image. Requires base image to include Docker engine components.",
+  "description": "Configures Docker-in-Docker wiring for dotfiles devcontainer using Docker bits baked into the base image (GHCR: ghcr.io/technicalpickles/devcontainer-features/dind). Requires base image to include Docker engine components.",
   "documentationURL": "https://github.com/technicalpickles/dotfiles-devcontainer",
   "options": {},
   "installsAfter": [],

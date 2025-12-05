@@ -20,6 +20,9 @@ TARGET_DIR=""
 VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
+DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
+KEEP_VENDORED_FEATURES=false
+MODE=""
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -175,9 +178,126 @@ detect_platform() {
   fi
 }
 
+prune_vendored_features() {
+  local features_dir="$TARGET_DIR/.devcontainer/features"
+  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+    if [[ -d "$features_dir" ]]; then
+      echo "ℹ️  Keeping vendored features at ${features_dir} (local DinD feature ref in use)"
+    fi
+    return 0
+  fi
+  if [[ -d "$features_dir" ]]; then
+    echo "🧹 Removing vendored features at ${features_dir} (template consumes published DinD feature from GHCR)"
+    rm -rf "$features_dir"
+  fi
+}
+
+override_dind_feature_ref() {
+  if [[ -z "$DIND_FEATURE_REF" ]]; then
+    return 0
+  fi
+  local dc_json="$TARGET_DIR/.devcontainer/devcontainer.json"
+  if [[ ! -f "$dc_json" ]]; then
+    echo "⚠️  Unable to pin DinD feature reference; ${dc_json} not found" >&2
+    return 0
+  fi
+  echo "🔒 Pinning DinD feature reference to ${DIND_FEATURE_REF}"
+  python3 - "$dc_json" "$DIND_FEATURE_REF" "$TARGET_DIR" <<'PY'
+import json, sys, re, pathlib, os
+path = pathlib.Path(sys.argv[1])
+ref_raw = sys.argv[2]
+dc_dir = path.parent
+raw = path.read_text()
+clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+obj = json.loads(clean)
+
+def normalize_ref(raw_ref: str) -> str:
+    sanitized = raw_ref
+    for prefix in ("./.devcontainer/", ".devcontainer/"):
+        if sanitized.startswith(prefix):
+            sanitized = "./" + sanitized[len(prefix):]
+            break
+
+    if sanitized.startswith("file:"):
+        ref_path = pathlib.Path(sanitized[5:])
+    elif sanitized.startswith(("./", "../")):
+        ref_path = pathlib.Path(sanitized)
+    elif sanitized.startswith("/"):
+        ref_path = pathlib.Path(sanitized)
+    else:
+        return sanitized  # non-local ref, leave as-is
+
+    base_dir = dc_dir
+    abs_ref = ref_path if ref_path.is_absolute() else (base_dir / ref_path).resolve()
+
+    try:
+        abs_ref.relative_to(dc_dir)
+    except ValueError:
+        raise SystemExit("Local DinD feature must be inside the .devcontainer/ folder")
+
+    rel_ref = os.path.relpath(abs_ref, dc_dir)
+    if not rel_ref.startswith("."):
+        rel_ref = f"./{rel_ref}"
+    return rel_ref
+
+normalized_ref = normalize_ref(ref_raw)
+obj["features"] = {normalized_ref: {}}
+path.write_text(json.dumps(obj, indent=2) + "\n")
+PY
+}
+
+is_local_dind_ref() {
+  local ref="$1"
+  if [[ -z "$ref" ]]; then
+    return 1
+  fi
+  [[ "$ref" =~ ^(\.\/|/|file:) ]]
+}
+
+apply_mode_presets() {
+  case "$MODE" in
+    local-dev)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        DIND_FEATURE_REF="./features/dind"
+      fi
+      ;;
+    ci-unpinned)
+      # Use template defaults (published tag) unless caller overrides
+      ;;
+    ci-pinned)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (ghcr...@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      ;;
+    release)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (no local refs)" >&2
+        exit 1
+      fi
+      if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if is_local_dind_ref "$DIND_FEATURE_REF"; then
+        echo "Error: MODE release does not allow local feature references" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo "Error: Unknown MODE: ${MODE}" >&2
+      exit 1
+      ;;
+  esac
+}
+
 usage() {
   cat << 'EOF'
-Usage: apply [OPTIONS] [TARGET_DIR]
+Usage: apply MODE [OPTIONS] [TARGET_DIR]
 
 Apply the dotfiles devcontainer template to a project directory.
 
@@ -188,6 +308,11 @@ repository or from elsewhere (e.g., curl | bash) and adjusts its behavior:
   - From elsewhere: Uses published template from GHCR
 
 ARGUMENTS:
+  MODE               Required. Preset for how to consume the DinD feature:
+                       - local-dev   : use vendored DinD feature (./features/dind) for unpublished local work
+                       - ci-unpinned : use the template's published feature tag (default behavior before modes)
+                       - ci-pinned   : require a pinned digest via DIND_FEATURE_REF
+                       - release     : require a pinned digest; disallow local refs
   TARGET_DIR         Target directory to apply template to (default: current directory)
                      Use "." for current directory
 
@@ -210,20 +335,20 @@ ENVIRONMENT VARIABLES:
   PLATFORM_OVERRIDE  Same as --platform (forces platform flag in devcontainer build)
 
 EXAMPLES:
-  # Apply to current directory with defaults
-  bin/apply .
+  # Local development against vendored DinD feature (unpublished)
+  bin/apply local-dev ~/projects/my-app
 
-  # Apply to a specific project directory
-  bin/apply ~/projects/my-app
+  # CI using latest published feature tag (previous default)
+  bin/apply ci-unpinned ~/projects/my-app
 
-  # Use custom dotfiles with environment variables
-  bin/apply --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
+  # CI/release with a pinned digest (required for release mode)
+  DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>" bin/apply ci-pinned .
 
-  # Multiple environment variables
-  bin/apply --env ROLE=work --env ENV=production ~/work/project
+  # Custom dotfiles with env vars
+  bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
 
-  # Via curl (uses published template)
-  curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- .
+  # Via curl (uses published template); choose a mode
+  curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- ci-unpinned .
 
 WORKFLOW:
   1. Detects if running from dotfiles-devcontainer repo or standalone
@@ -236,6 +361,11 @@ EOF
 
 # Collect env vars as KEY=VALUE entries (works with bash 3.x)
 ENV_VARS=()
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 1
+fi
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -281,11 +411,24 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
     *)
-      TARGET_DIR="$1"
+      if [[ -z "$MODE" ]]; then
+        MODE="$1"
+      elif [[ -z "$TARGET_DIR" ]]; then
+        TARGET_DIR="$1"
+      else
+        echo "Error: Unexpected argument: $1" >&2
+        exit 1
+      fi
       shift
       ;;
   esac
 done
+
+if [[ -z "$MODE" ]]; then
+  echo "Error: MODE argument is required. See --help for options." >&2
+  usage
+  exit 1
+fi
 
 # Default to current directory if not specified
 if [[ -z "$TARGET_DIR" ]]; then
@@ -319,6 +462,12 @@ else
   echo "   Repo: $DOTFILES_REPO"
 fi
 
+apply_mode_presets
+
+if is_local_dind_ref "$DIND_FEATURE_REF"; then
+  KEEP_VENDORED_FEATURES=true
+fi
+
 echo
 echo "Dotfiles Dev Container Template Applier"
 echo "========================================"
@@ -342,11 +491,18 @@ fi
 
 echo
 echo "Configuration:"
+echo "  Mode: $MODE"
 echo "  Target directory: $TARGET_DIR"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
 echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
 echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
+if [[ -n "$DIND_FEATURE_REF" ]]; then
+  echo "  DinD feature ref override: $DIND_FEATURE_REF"
+  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+    echo "  DinD feature source: local (vendored features will be kept)"
+  fi
+fi
 # Temporarily disable unbound variable check for associative array
 set +u
 if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
@@ -462,6 +618,12 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/post-create.sh
   rm .devcontainer/post-create.sh.bak
 
+  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+    echo "📦 Copying vendored features for local ref"
+    mkdir -p .devcontainer/features
+    cp -R "$TEMPLATE_SOURCE/.devcontainer/features/." .devcontainer/features/
+  fi
+
   if [[ -n "$PLATFORM_SELECTED" ]]; then
     python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json <<'PY'
 import json, sys, re
@@ -483,6 +645,8 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
   fi
 
+  override_dind_feature_ref
+  prune_vendored_features
   echo "✓ Template files copied and configured"
 else
   # Running standalone - use devcontainer CLI with published template
@@ -537,6 +701,8 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
   fi
 
+  override_dind_feature_ref
+  prune_vendored_features
   echo "✓ Template applied via devcontainer CLI"
 fi
 
