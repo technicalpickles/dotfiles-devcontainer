@@ -62,3 +62,16 @@
 - `bats test/apply.bats`: pass (template references GHCR DinD and no vendored features).
 - `test/features/dind/test.sh`: pass on GH Actions runner (installs feature locally, starts dockerd, verifies `docker info`); set `REQUIRE_DOCKER=true` when running in a base-image/devcontainer context that includes Docker engine bits.
 - `bin/smoke-test --template dotfiles`: pass against base `ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b` (Docker 29.1.2; hello-world succeeds).
+
+## Local validation
+
+- Fast path: `bats test/apply.bats` (no Docker required).
+- DinD wiring inside devcontainer (preferred): build/pull a base with dockerd, then:
+
+  ```sh
+  ./bin/build-base --tag local/dotfiles-devcontainer/base:test
+  bin/smoke-test --base-image local/dotfiles-devcontainer/base:test
+  ```
+
+  This runs `test/features/dind/test.sh` inside the devcontainer with privileged Docker and the local feature source. Requires host Docker with privileged support.
+- Direct host run of `test/features/dind/test.sh` needs a local dockerd; otherwise it will exit early with a missing Docker engine warning.
