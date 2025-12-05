@@ -83,6 +83,7 @@ TEMPLATE_DIR="$REPO_ROOT/src/${TEMPLATE_ID}"
 BUILD_DIR="${WORKDIR%/}/${TEMPLATE_ID}"
 TEST_DIR="$REPO_ROOT/test/${TEMPLATE_ID}"
 ID_LABEL="test-container=${TEMPLATE_ID}"
+LOCAL_WORKSPACE_BASENAME="$(basename "${BUILD_DIR}")"
 if [[ -n "${DEVCONTAINER_CLI}" ]]; then
   DEVCONTAINER_CMD=("${DEVCONTAINER_CLI}")
 else
@@ -265,6 +266,11 @@ if [[ -d "${TEST_DIR}" ]]; then
   ls -la "${DEST_DIR}/test-utils" || true
 fi
 
+echo "Preparing DinD wiring test..."
+mkdir -p "${BUILD_DIR}/test/features/dind"
+cp -Rp "${REPO_ROOT}/test/features/dind/test.sh" "${BUILD_DIR}/test/features/dind/"
+FEATURE_VERSION="$(node -e "console.log(require('${REPO_ROOT}/src/dotfiles/.devcontainer/features/dind/devcontainer-feature.json').version)")"
+
 echo "Building devcontainer (this may take a moment)..."
 export DOCKER_BUILDKIT=1
 UP_FLAGS=(--id-label "${ID_LABEL}" --workspace-folder "${BUILD_DIR}" --remove-existing-container)
@@ -274,11 +280,33 @@ fi
 "${DEVCONTAINER_CMD[@]}" up "${UP_FLAGS[@]}"
 
 echo "Running smoke test..."
-SMOKE_CMD='set -e; if [ -f "test-project/test.sh" ]; then cd test-project && if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi && ./test.sh; else echo "No tests found"; ls -la; fi'
+SMOKE_CMD=$(cat <<'EOF'
+set -e
+WORKSPACE_ROOT="$(pwd)"
+
+if [ -f "test-project/test.sh" ]; then
+  cd test-project
+  if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi
+  ./test.sh
+  cd ..
+else
+  echo "No tests found in test-project"
+fi
+
+if [ -f "test/features/dind/test.sh" ]; then
+  cd test/features/dind
+  if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi
+  REQUIRE_DOCKER=true FEATURE_SOURCE="${WORKSPACE_ROOT}/.devcontainer/features/dind" FEATURE_VERSION="${FEATURE_VERSION}" bash ./test.sh
+  cd ../../..
+else
+  echo "DinD wiring test not found under test/features/dind"
+fi
+EOF
+)
 "${DEVCONTAINER_CMD[@]}" exec \
   --workspace-folder "${BUILD_DIR}" \
   --id-label "${ID_LABEL}" \
-  /bin/sh -c "${SMOKE_CMD}"
+  env FEATURE_VERSION="${FEATURE_VERSION}" /bin/sh -c "${SMOKE_CMD}"
 
 popd >/dev/null
 
