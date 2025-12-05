@@ -8,7 +8,7 @@
 
 ## Consume the published feature
 
-1. Apply the template: `bin/apply` into a target repo (no `.devcontainer/features` vendoring expected).
+1. Apply the template: `bin/apply ci-unpinned` into a target repo (no `.devcontainer/features` vendoring expected).
 2. Reference the feature in `src/dotfiles/.devcontainer/devcontainer.json` (start from the latest released tag when creating the template):
 
    ```json
@@ -33,7 +33,7 @@
 1. From repo root, apply the template to a temp directory and time the run:
 
    ```sh
-   time DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git DOTFILES_BRANCH=main USER_SHELL=/usr/bin/fish VERBOSE=true bin/apply /tmp/dind-baseline
+   time DOTFILES_REPO=https://github.com/technicalpickles/dotfiles.git DOTFILES_BRANCH=main USER_SHELL=/usr/bin/fish VERBOSE=true bin/apply ci-unpinned /tmp/dind-baseline
    ```
 
 2. From the applied temp directory, build the devcontainer and time the build:
@@ -55,7 +55,7 @@
 ## Fallback when registry is unreachable
 
 1. Retry with backoff; keep the pinned version/digest unchanged.
-2. Use `.github/workflows/pin-dind-feature.yml` (or the JSON from `publish-dind-feature.yml`) to resolve a digest, then rerun `bin/apply` with `DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>"` to pin deterministically in CI/release.
+2. Use `.github/workflows/pin-dind-feature.yml` (or the JSON from `publish-dind-feature.yml`) to resolve a digest, then rerun `bin/apply ci-pinned` with `DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>"` to pin deterministically in CI/release.
 3. If outage persists, switch to a known-good digest (documented in release notes) in the `features` block.
 4. Last resort: temporarily vendor the feature files locally with a note to remove once registry access returns.
 

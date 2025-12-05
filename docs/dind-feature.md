@@ -15,10 +15,10 @@
 
 ## Performance baseline
 
-| Scenario                            | Duration  | Delta vs baseline | Notes                                                    |
-| ----------------------------------- | --------- | ----------------- | -------------------------------------------------------- |
-| Apply + build (GHA, default opts)   | _pending_ | N/A               | Capture with `bin/apply` + `bin/build` (see quickstart). |
-| Docker verification (`docker info`) | _pending_ | N/A               | Use prebaked Docker bits; record pass/fail.              |
+| Scenario                            | Duration  | Delta vs baseline | Notes                                                                |
+| ----------------------------------- | --------- | ----------------- | -------------------------------------------------------------------- |
+| Apply + build (GHA, default opts)   | _pending_ | N/A               | Capture with `bin/apply ci-unpinned` + `bin/build` (see quickstart). |
+| Docker verification (`docker info`) | _pending_ | N/A               | Use prebaked Docker bits; record pass/fail.                          |
 
 ## Outage notes
 
@@ -49,16 +49,16 @@
 
 ## Pinning and outage fallback
 
-1. Resolve and pin a digest using `.github/workflows/pin-dind-feature.yml` (or the JSON from `bin/publish-dind-feature` / `publish-dind-feature.yml`), then set `DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>"` when running `bin/apply` or replace the features block with the pinned digest snippet from `devcontainer.json`.
+1. Resolve and pin a digest using `.github/workflows/pin-dind-feature.yml` (or the JSON from `bin/publish-dind-feature` / `publish-dind-feature.yml`), then set `DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>"` when running `bin/apply ci-pinned ...` (or replace the features block with the pinned digest snippet from `devcontainer.json`).
 2. Retry with backoff using the pinned digest (`devcontainer up` / `bin/build`); avoid switching to `latest` during an outage.
 3. If GHCR remains unavailable, temporarily vendor the feature files from `src/dotfiles/.devcontainer/features/dind/` with a clear cleanup reminder to remove them once registry access returns.
 4. After recovery, restore the pinned GHCR reference, remove any vendored feature files from consuming repos, and record the digest + validation evidence in this document.
 
 ### Local development before publish
 
-- Use the vendored feature source by applying with a local ref: `DIND_FEATURE_REF=./features/dind bin/apply <target>`. This keeps `.devcontainer/features/dind/` and points `devcontainer.json` at it instead of GHCR.
+- Use the vendored feature source with mode `local-dev`: `bin/apply local-dev <target>`. This keeps `.devcontainer/features/dind/` and points `devcontainer.json` at it instead of GHCR.
 - Build/up the devcontainer normally; changes to the local feature source are picked up without needing GHCR access.
-- Once the feature is published, re-run `bin/apply` without `DIND_FEATURE_REF` (or with a pinned digest) to restore the registry reference and remove the vendored feature directory.
+- Once the feature is published, re-run `bin/apply ci-unpinned ...` or `bin/apply ci-pinned ...` to restore the registry reference and remove the vendored feature directory.
 
 ## Validation status
 

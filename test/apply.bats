@@ -36,7 +36,7 @@ run_apply() {
     platform_args+=(--platform "$platform")
   fi
 
-  run env "${env_args[@]}" bash -x "$APPLY" --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "$WORKDIR"
+  run env "${env_args[@]}" bash -x "$APPLY" ci-unpinned --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "$WORKDIR"
   if [[ "$status" -ne 0 ]]; then
     echo "apply failed (name=$name):"
     echo "$output"

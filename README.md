@@ -49,10 +49,10 @@ Use the `bin/apply` helper script for the easiest setup:
 ```bash
 # From this repository (if cloned locally)
 cd /path/to/dotfiles-devcontainer
-./bin/apply /path/to/your/project
+./bin/apply ci-unpinned /path/to/your/project
 
 # Or via curl (one-liner)
-curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- /path/to/your/project
+curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- ci-unpinned /path/to/your/project
 ```
 
 The script automatically:
@@ -61,12 +61,17 @@ The script automatically:
 - Installs `@devcontainers/cli` if needed (via npx or npm)
 - Applies the template with your options
 - Warns if `.devcontainer/` already exists
+- Requires a MODE to choose how the DinD feature is sourced:
+  - `local-dev`: use vendored feature (for unpublished/local changes)
+  - `ci-unpinned`: use published feature tag (general/default)
+  - `ci-pinned`: require digest in `DIND_FEATURE_REF`
+  - `release`: require digest, disallow local refs
 
 **Custom options:**
 
 ```bash
 # Use custom dotfiles with environment variables
-./bin/apply \
+./bin/apply ci-unpinned \
   --repo https://github.com/YOUR_USERNAME/dotfiles.git \
   --branch main \
   --shell /usr/bin/fish \
@@ -75,7 +80,7 @@ The script automatically:
   /path/to/your/project
 
 # Or with environment variables
-DOTFILES_REPO=https://github.com/me/dots.git USER_SHELL=/bin/bash ./bin/apply .
+DOTFILES_REPO=https://github.com/me/dots.git USER_SHELL=/bin/bash ./bin/apply ci-unpinned .
 ```
 
 #### Manual CLI Application
@@ -138,7 +143,7 @@ devcontainer templates apply \
 
 - Base images are published as multi-architecture manifests (ARM64 and X86/AMD64) to GHCR; you normally specify only the base image tag.
 - Devcontainer builds auto-select the matching architecture based on the build host. Docker emits a platform warning if the host and image mismatch.
-- An explicit platform override is available for remote/CI workflows where the build host differs from your workstation; use `bin/apply --platform <platform>` (or `PLATFORM_OVERRIDE`) only when necessary.
+- An explicit platform override is available for remote/CI workflows where the build host differs from your workstation; use `bin/apply ci-unpinned --platform <platform>` (or `PLATFORM_OVERRIDE`) only when necessary.
 - Release pipelines build and test both architectures and block publication if either variant fails validation.
 
 ## macOS Performance Optimization
@@ -283,10 +288,10 @@ This repository includes several helper scripts in the `bin/` directory:
 
 ```bash
 # Apply to a project directory
-./bin/apply /path/to/your/project
+./bin/apply ci-unpinned /path/to/your/project
 
 # With custom options
-./bin/apply --repo https://github.com/user/dots.git --env ROLE=work ~/project
+./bin/apply ci-unpinned --repo https://github.com/user/dots.git --env ROLE=work ~/project
 
 # View all options
 ./bin/apply --help

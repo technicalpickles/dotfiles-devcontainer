@@ -22,6 +22,7 @@ DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
 DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
+MODE=""
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -205,7 +206,6 @@ override_dind_feature_ref() {
 import json, sys, re, pathlib, os
 path = pathlib.Path(sys.argv[1])
 ref_raw = sys.argv[2]
-workspace = pathlib.Path(sys.argv[3])
 dc_dir = path.parent
 raw = path.read_text()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
@@ -254,9 +254,50 @@ is_local_dind_ref() {
   [[ "$ref" =~ ^(\.\/|/|file:) ]]
 }
 
+apply_mode_presets() {
+  case "$MODE" in
+    local-dev)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        DIND_FEATURE_REF="./features/dind"
+      fi
+      ;;
+    ci-unpinned)
+      # Use template defaults (published tag) unless caller overrides
+      ;;
+    ci-pinned)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (ghcr...@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      ;;
+    release)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (no local refs)" >&2
+        exit 1
+      fi
+      if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if is_local_dind_ref "$DIND_FEATURE_REF"; then
+        echo "Error: MODE release does not allow local feature references" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      echo "Error: Unknown MODE: ${MODE}" >&2
+      exit 1
+      ;;
+  esac
+}
+
 usage() {
   cat << 'EOF'
-Usage: apply [OPTIONS] [TARGET_DIR]
+Usage: apply MODE [OPTIONS] [TARGET_DIR]
 
 Apply the dotfiles devcontainer template to a project directory.
 
@@ -267,6 +308,11 @@ repository or from elsewhere (e.g., curl | bash) and adjusts its behavior:
   - From elsewhere: Uses published template from GHCR
 
 ARGUMENTS:
+  MODE               Required. Preset for how to consume the DinD feature:
+                       - local-dev   : use vendored DinD feature (./features/dind) for unpublished local work
+                       - ci-unpinned : use the template's published feature tag (default behavior before modes)
+                       - ci-pinned   : require a pinned digest via DIND_FEATURE_REF
+                       - release     : require a pinned digest; disallow local refs
   TARGET_DIR         Target directory to apply template to (default: current directory)
                      Use "." for current directory
 
@@ -289,20 +335,20 @@ ENVIRONMENT VARIABLES:
   PLATFORM_OVERRIDE  Same as --platform (forces platform flag in devcontainer build)
 
 EXAMPLES:
-  # Apply to current directory with defaults
-  bin/apply .
+  # Local development against vendored DinD feature (unpublished)
+  bin/apply local-dev ~/projects/my-app
 
-  # Apply to a specific project directory
-  bin/apply ~/projects/my-app
+  # CI using latest published feature tag (previous default)
+  bin/apply ci-unpinned ~/projects/my-app
 
-  # Use custom dotfiles with environment variables
-  bin/apply --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
+  # CI/release with a pinned digest (required for release mode)
+  DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>" bin/apply ci-pinned .
 
-  # Multiple environment variables
-  bin/apply --env ROLE=work --env ENV=production ~/work/project
+  # Custom dotfiles with env vars
+  bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
 
-  # Via curl (uses published template)
-  curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- .
+  # Via curl (uses published template); choose a mode
+  curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- ci-unpinned .
 
 WORKFLOW:
   1. Detects if running from dotfiles-devcontainer repo or standalone
@@ -360,11 +406,23 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
     *)
-      TARGET_DIR="$1"
+      if [[ -z "$MODE" ]]; then
+        MODE="$1"
+      elif [[ -z "$TARGET_DIR" ]]; then
+        TARGET_DIR="$1"
+      else
+        echo "Error: Unexpected argument: $1" >&2
+        exit 1
+      fi
       shift
       ;;
   esac
 done
+
+if [[ -z "$MODE" ]]; then
+  echo "Error: MODE argument is required. See --help for options." >&2
+  exit 1
+fi
 
 # Default to current directory if not specified
 if [[ -z "$TARGET_DIR" ]]; then
@@ -398,6 +456,8 @@ else
   echo "   Repo: $DOTFILES_REPO"
 fi
 
+apply_mode_presets
+
 if is_local_dind_ref "$DIND_FEATURE_REF"; then
   KEEP_VENDORED_FEATURES=true
 fi
@@ -425,6 +485,7 @@ fi
 
 echo
 echo "Configuration:"
+echo "  Mode: $MODE"
 echo "  Target directory: $TARGET_DIR"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
