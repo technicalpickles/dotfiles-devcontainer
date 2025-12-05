@@ -9,7 +9,7 @@ Add intelligent auto-detection of the user's dotfiles repository to `bin/apply`,
 
 ## Goals
 
-1. **Zero-configuration UX** - Most users should be able to run `./bin/apply .` without any flags
+1. **Zero-configuration UX** - Most users should be able to run `./bin/apply ci-unpinned .` without any additional flags
 2. **Multi-source intelligence** - Use all available information (env vars, git config, local repos, gh auth)
 3. **Clear feedback** - Show what was detected and why, warn about inconsistencies
 4. **Explicit override** - Always respect `--repo` flag or `$DOTFILES_REPO` env var
@@ -29,6 +29,7 @@ The `detect_dotfiles_repo()` function collects information from these sources in
 4. **GitHub CLI** - `gh auth status` to get authenticated username
 
 **Data storage:**
+
 ```bash
 DETECTED_REPO_ENV=""        # From $DOTFILES_REPO
 DETECTED_REPO_GITCONFIG=""  # From git config github.user
@@ -79,20 +80,23 @@ fi
 ```
 
 **Command-line flag handling:**
+
 - When `--repo` is used, set `DOTFILES_REPO_EXPLICIT=true` before detection runs
 - When `$DOTFILES_REPO` env var differs from template default, set `DOTFILES_REPO_EXPLICIT=true`
 
 ## Output Examples
 
 ### Success - Single Source
-```
+
+```text
 🔍 Auto-detecting dotfiles repository...
    ✓ Found via git config: https://github.com/technicalpickles/dotfiles.git
    Using: https://github.com/technicalpickles/dotfiles.git
 ```
 
 ### Success - Validated Consistency
-```
+
+```text
 🔍 Auto-detecting dotfiles repository...
    ✓ Found via git config: https://github.com/technicalpickles/dotfiles.git
    ✓ Validated: Local ~/dotfiles matches git config
@@ -100,7 +104,8 @@ fi
 ```
 
 ### Warning - Inconsistency
-```
+
+```text
 🔍 Auto-detecting dotfiles repository...
    ⚠️  Multiple dotfiles repos detected:
        - git config: https://github.com/technicalpickles/dotfiles.git
@@ -110,7 +115,8 @@ fi
 ```
 
 ### Explicit Override
-```
+
+```text
 🔍 Using explicitly specified dotfiles repository
    Repo: https://github.com/myuser/my-dotfiles.git
 ```
@@ -118,40 +124,46 @@ fi
 ## Error Handling
 
 ### Silent Failures (Graceful Degradation)
+
 - `gh` not installed → skip GitHub CLI detection
 - Local paths don't exist → skip local detection
 - `git config github.user` not set → skip git config detection
 - Commands fail (non-zero exit) → skip that source
 
 ### Validation Warnings
+
 - Constructed URL looks suspicious (no repo name, invalid format) → warn but continue
 - SSH URL normalization fails → use URL as-is with warning
 
 ### Detection Failure
+
 - No sources found → use template default silently (current behavior)
 - Same UX as before if nothing is configured
 
 ### Verbose Mode
+
 Add `--verbose` flag to show detection details:
+
 ```bash
-./bin/apply --verbose .
+./bin/apply ci-unpinned --verbose .
 ```
 
 Output includes:
+
 - Each source checked and result
 - Why each source was chosen/rejected
 - Cross-validation logic decisions
 
 ## Edge Cases
 
-| Scenario | Handling |
-|----------|----------|
-| SSH URLs | Normalize to HTTPS: `git@github.com:user/repo.git` → `https://github.com/user/dotfiles.git` |
-| Non-GitHub remotes | Use as-is (GitLab, Bitbucket, self-hosted) |
-| Multiple local dotfiles | Prefer `~/dotfiles` over `~/.dotfiles` |
-| Empty git config | Skip that source silently |
-| Username mismatch | Warn but allow (might be org repo or fork) |
-| Invalid URLs | Validate basic format, warn if suspicious |
+| Scenario                | Handling                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| SSH URLs                | Normalize to HTTPS: `git@github.com:user/repo.git` → `https://github.com/user/dotfiles.git` |
+| Non-GitHub remotes      | Use as-is (GitLab, Bitbucket, self-hosted)                                                  |
+| Multiple local dotfiles | Prefer `~/dotfiles` over `~/.dotfiles`                                                      |
+| Empty git config        | Skip that source silently                                                                   |
+| Username mismatch       | Warn but allow (might be org repo or fork)                                                  |
+| Invalid URLs            | Validate basic format, warn if suspicious                                                   |
 
 ## URL Normalization
 
@@ -175,6 +187,7 @@ normalize_git_url() {
 ## Testing Strategy
 
 ### Unit Test Scenarios
+
 1. **Single source tests:**
    - Only env var set
    - Only git config set
@@ -203,6 +216,7 @@ normalize_git_url() {
    - Template default used when nothing found
 
 ### Manual Testing
+
 - Test on fresh machine with no configuration
 - Test with various combinations of sources
 - Test with `--verbose` to verify output
@@ -211,6 +225,7 @@ normalize_git_url() {
 ## Implementation Notes
 
 ### Function Signature
+
 ```bash
 detect_dotfiles_repo() {
   # Sets $DOTFILES_REPO based on detected sources
@@ -220,9 +235,11 @@ detect_dotfiles_repo() {
 ```
 
 ### Failure Mode
+
 All detection failures are non-fatal. The function always succeeds and falls back to the template default if nothing is found.
 
 ### Performance
+
 - All checks run in sequence (not parallel to avoid complexity)
 - Total overhead: ~100-200ms on typical systems
 - Most time spent on `gh auth status` if installed (network call)
