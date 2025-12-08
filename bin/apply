@@ -600,12 +600,58 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   set -u
 
   # Replace placeholders in devcontainer.json
-  sed -i.bak "s|\${templateOption:installEnvVars}|$CONTAINER_ENV_JSON|g" .devcontainer/devcontainer.json
-  sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/devcontainer.json
-  sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/devcontainer.json
-  sed -i.bak "s|\${templateOption:userShell}|$USER_SHELL|g" .devcontainer/devcontainer.json
-  sed -i.bak "s|\${templateOption:userShellName}|$USER_SHELL_NAME|g" .devcontainer/devcontainer.json
-  rm .devcontainer/devcontainer.json.bak
+  # Use Python for JSON-aware replacement to handle containerEnv as object, not string
+  python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" <<'PY'
+import json, sys, re
+path = sys.argv[1]
+dotfiles_repo = sys.argv[2]
+dotfiles_branch = sys.argv[3]
+user_shell = sys.argv[4]
+user_shell_name = sys.argv[5]
+container_env_json = sys.argv[6]
+
+with open(path, 'r', encoding='utf-8') as f:
+    raw = f.read()
+
+# Strip JSONC comments for parsing
+clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+obj = json.loads(clean)
+
+# Replace template options in build args
+if 'build' in obj and 'args' in obj['build']:
+    args = obj['build']['args']
+    if 'DOTFILES_REPO' in args:
+        args['DOTFILES_REPO'] = dotfiles_repo
+    if 'DOTFILES_BRANCH' in args:
+        args['DOTFILES_BRANCH'] = dotfiles_branch
+    if 'USER_SHELL' in args:
+        args['USER_SHELL'] = user_shell
+
+# Replace containerEnv as proper JSON object (not string)
+obj['containerEnv'] = json.loads(container_env_json)
+
+# Replace in customizations
+if 'customizations' in obj and 'vscode' in obj['customizations']:
+    vscode = obj['customizations']['vscode']
+    if 'settings' in vscode:
+        settings = vscode['settings']
+        if 'terminal.integrated.defaultProfile.linux' in settings:
+            settings['terminal.integrated.defaultProfile.linux'] = user_shell_name
+        if 'terminal.integrated.profiles.linux' in settings:
+            profiles = settings['terminal.integrated.profiles.linux']
+            # Replace the shell name key
+            old_profiles = dict(profiles)
+            profiles.clear()
+            for key, val in old_profiles.items():
+                new_key = user_shell_name if '${templateOption:userShellName}' in key else key
+                if isinstance(val, dict) and 'path' in val:
+                    val['path'] = user_shell
+                profiles[new_key] = val
+
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(obj, f, indent=2)
+    f.write('\n')
+PY
 
   # Replace placeholders in Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/Dockerfile
