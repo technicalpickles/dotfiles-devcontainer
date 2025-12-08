@@ -23,6 +23,7 @@ DOTFILES_REPO_WAS_FLAG=false
 DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
 MODE=""
+SKIP_DIND=false
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -180,6 +181,13 @@ detect_platform() {
 
 prune_vendored_features() {
   local features_dir="$TARGET_DIR/.devcontainer/features"
+  if [[ "$SKIP_DIND" == "true" ]]; then
+    if [[ -d "$features_dir" ]]; then
+      echo "🧹 Removing vendored features at ${features_dir} (DinD feature skipped)"
+      rm -rf "$features_dir"
+    fi
+    return 0
+  fi
   if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
     if [[ -d "$features_dir" ]]; then
       echo "ℹ️  Keeping vendored features at ${features_dir} (local DinD feature ref in use)"
@@ -193,6 +201,9 @@ prune_vendored_features() {
 }
 
 override_dind_feature_ref() {
+  if [[ "$SKIP_DIND" == "true" ]]; then
+    return 0
+  fi
   if [[ -z "$DIND_FEATURE_REF" ]]; then
     return 0
   fi
@@ -317,14 +328,15 @@ ARGUMENTS:
                      Use "." for current directory
 
 OPTIONS:
-  --env KEY=VALUE    Environment variable to set before running dotfiles install.sh
-                     Can be specified multiple times
-  --repo URL         Dotfiles repository URL (default: auto-detected)
-  --branch BRANCH    Dotfiles branch (default: main)
-  --shell PATH       Login shell path for the vscode user (default: /usr/bin/fish)
-  --platform VALUE   Optional platform override for base image (e.g., linux/arm64, linux/amd64)
-  --verbose          Show detailed detection information
-  -h, --help         Show this help message
+   --env KEY=VALUE    Environment variable to set before running dotfiles install.sh
+                      Can be specified multiple times
+   --repo URL         Dotfiles repository URL (default: auto-detected)
+   --branch BRANCH    Dotfiles branch (default: main)
+   --shell PATH       Login shell path for the vscode user (default: /usr/bin/fish)
+   --platform VALUE   Optional platform override for base image (e.g., linux/arm64, linux/amd64)
+   --no-dind          Skip Docker-in-Docker feature (exclude from devcontainer config)
+   --verbose          Show detailed detection information
+   -h, --help         Show this help message
 
 ENVIRONMENT VARIABLES:
   INSTALL_ENV_VARS   Environment variables in KEY1=value1,KEY2=value2 format
@@ -344,11 +356,14 @@ EXAMPLES:
   # CI/release with a pinned digest (required for release mode)
   DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>" bin/apply ci-pinned .
 
-  # Custom dotfiles with env vars
-  bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
+   # Custom dotfiles with env vars
+   bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
 
-  # Via curl (uses published template); choose a mode
-  curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- ci-unpinned .
+   # Apply without Docker-in-Docker
+   bin/apply ci-unpinned --no-dind /path/to/your/project
+
+   # Via curl (uses published template); choose a mode
+   curl -fsSL https://raw.githubusercontent.com/technicalpickles/dotfiles-devcontainer/main/bin/apply | bash -s -- ci-unpinned .
 
 WORKFLOW:
   1. Detects if running from dotfiles-devcontainer repo or standalone
@@ -403,6 +418,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --verbose)
       VERBOSE="true"
+      shift
+      ;;
+    --no-dind)
+      SKIP_DIND="true"
       shift
       ;;
     -*)
@@ -497,7 +516,9 @@ echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
 echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
 echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
-if [[ -n "$DIND_FEATURE_REF" ]]; then
+if [[ "$SKIP_DIND" == "true" ]]; then
+  echo "  Docker-in-Docker: disabled (--no-dind)"
+elif [[ -n "$DIND_FEATURE_REF" ]]; then
   echo "  DinD feature ref override: $DIND_FEATURE_REF"
   if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
     echo "  DinD feature source: local (vendored features will be kept)"
@@ -599,9 +620,9 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   fi
   set -u
 
-  # Replace placeholders in devcontainer.json
-  # Use Python for JSON-aware replacement to handle containerEnv as object, not string
-  python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" <<'PY'
+   # Replace placeholders in devcontainer.json
+   # Use Python for JSON-aware replacement to handle containerEnv as object, not string
+   python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" "$SKIP_DIND" <<'PY'
 import json, sys, re
 path = sys.argv[1]
 dotfiles_repo = sys.argv[2]
@@ -609,6 +630,7 @@ dotfiles_branch = sys.argv[3]
 user_shell = sys.argv[4]
 user_shell_name = sys.argv[5]
 container_env_json = sys.argv[6]
+skip_dind = sys.argv[7] == "true"
 
 with open(path, 'r', encoding='utf-8') as f:
     raw = f.read()
@@ -648,6 +670,10 @@ if 'customizations' in obj and 'vscode' in obj['customizations']:
                     val['path'] = user_shell
                 profiles[new_key] = val
 
+# Remove features if skip_dind is true
+if skip_dind and 'features' in obj:
+    del obj['features']
+
 with open(path, 'w', encoding='utf-8') as f:
     json.dump(obj, f, indent=2)
     f.write('\n')
@@ -670,11 +696,12 @@ PY
     cp -R "$TEMPLATE_SOURCE/.devcontainer/features/." .devcontainer/features/
   fi
 
-  if [[ -n "$PLATFORM_SELECTED" ]]; then
-    python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json <<'PY'
+   if [[ -n "$PLATFORM_SELECTED" ]]; then
+     python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json "$SKIP_DIND" <<'PY'
 import json, sys, re
 platform = sys.argv[1]
 path = sys.argv[2]
+skip_dind = sys.argv[3] == "true"
 raw = open(path, 'r', encoding='utf-8').read()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
 obj = json.loads(clean)
@@ -685,11 +712,16 @@ if flag not in options:
     options.insert(0, flag)
 build['options'] = options
 obj['build'] = build
+
+# Remove features if skip_dind is true
+if skip_dind and 'features' in obj:
+    del obj['features']
+
 with open(path, 'w', encoding='utf-8') as f:
     json.dump(obj, f, indent=2)
     f.write('\n')
 PY
-  fi
+   fi
 
   override_dind_feature_ref
   prune_vendored_features
@@ -726,11 +758,12 @@ else
     --template-args userShellName="$USER_SHELL_NAME" \
     $ENV_ARGS
 
-  if [[ -n "$PLATFORM_SELECTED" && -f ".devcontainer/devcontainer.json" ]]; then
-    python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json <<'PY'
+   if [[ -n "$PLATFORM_SELECTED" && -f ".devcontainer/devcontainer.json" ]]; then
+     python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json "$SKIP_DIND" <<'PY'
 import json, sys, re
 platform = sys.argv[1]
 path = sys.argv[2]
+skip_dind = sys.argv[3] == "true"
 raw = open(path, 'r', encoding='utf-8').read()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
 obj = json.loads(clean)
@@ -741,11 +774,16 @@ if flag not in options:
     options.insert(0, flag)
 build['options'] = options
 obj['build'] = build
+
+# Remove features if skip_dind is true
+if skip_dind and 'features' in obj:
+    del obj['features']
+
 with open(path, 'w', encoding='utf-8') as f:
     json.dump(obj, f, indent=2)
     f.write('\n')
 PY
-  fi
+   fi
 
   override_dind_feature_ref
   prune_vendored_features
