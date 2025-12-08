@@ -118,6 +118,22 @@ devcontainer templates apply \
   --template-args dotfilesBranch=main
 ```
 
+## Docker-in-Docker Feature (published)
+
+- The template consumes a published DinD feature (no `.devcontainer/features` folder is copied into your repo).
+- Base image must include Docker engine components; the feature provides wiring/entrypoint only.
+- Features block (pinned to the published version):
+
+```jsonc
+"features": {
+  "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0": {}
+}
+```
+
+- To update/pin: change the version (or digest when published) in the features block, rebuild, and verify Docker works.
+- If the registry is temporarily unavailable, retry with the pinned version/digest; as a last resort, temporarily vendor the feature and remove it once the registry is back.
+- Outage fallback: keep the pinned ref, retry with backoff, switch to a known-good digest from `docs/dind-feature.md`, and only temporarily vendor if needed (clean up afterward).
+
 ## Architecture Support (ARM64 + X86/AMD64)
 
 - Base images are published as multi-architecture manifests (ARM64 and X86/AMD64) to GHCR; you normally specify only the base image tag.
@@ -371,12 +387,22 @@ Edit [src/dotfiles/.devcontainer/devcontainer.json](src/dotfiles/.devcontainer/d
 
 ### Customizing Post-Creation Steps
 
-Edit [src/dotfiles/.devcontainer/post-create.sh](src/dotfiles/.devcontainer/post-create.sh) to add setup steps that run after the container is created:
+The template ships a base post-create entrypoint at `/usr/local/bin/devcontainer-post-create` baked into the base image. The generated [.devcontainer/post-create.sh](src/dotfiles/.devcontainer/post-create.sh) is a thin shim: it exports your templated `DOTFILES_REPO`/`DOTFILES_BRANCH`, sets hook defaults, and delegates to the base entrypoint.
 
-```bash
-#!/usr/bin/env bash
-# Your custom setup steps here
-```
+Base entrypoint responsibilities:
+
+- Sync dotfiles via `setup-dotfiles` (respects `SKIP_DOTFILES`, plus forwards `SKIP_MISE`, `SKIP_FISH`, `SKIP_GH`, `SKIP_AWS` to the installer)
+- Refresh the shell prompt and configure `git safe.directory`
+- Guard git submodules (skip with `SKIP_SUBMODULES=1`)
+- Fail fast if required inputs are missing or the entrypoint is not executable
+
+Project-specific hooks:
+
+- Add an executable hook at `/workspace/.devcontainer/hooks/post-create` (the shim also resolves the current workspace path when different from `/workspace`)
+- Control order with `HOOK_ORDER=before` (default) or `HOOK_ORDER=after`
+- Hook failures stop the post-create run; skipped when the file is absent or not executable
+
+Skip flags can be set in your `containerEnv`, via `bin/apply` options that set env vars, or in your shell before running the post-create command.
 
 ## AWS Authentication Workflow
 

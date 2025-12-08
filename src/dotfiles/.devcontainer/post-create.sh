@@ -1,41 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set -x
 
-echo "Running post-create setup..."
-
-DOTFILES_DIR="/home/vscode/.dotfiles"
+BASE_POST_CREATE="${BASE_POST_CREATE:-/usr/local/bin/devcontainer-post-create}"
 # shellcheck disable=SC2154 # templateOption placeholders replaced by apply
-DEFAULT_REPO="${templateOption:dotfilesRepo}"
-DEFAULT_BRANCH="${templateOption:dotfilesBranch}"
-REPO_URL=$(git -C "${DOTFILES_DIR}" config --get remote.origin.url || echo "${DEFAULT_REPO}")
-BRANCH_NAME=$(git -C "${DOTFILES_DIR}" rev-parse --abbrev-ref HEAD || echo "${DEFAULT_BRANCH}")
+export DOTFILES_REPO="${templateOption:dotfilesRepo}"
+# shellcheck disable=SC2154 # templateOption placeholders replaced by apply
+export DOTFILES_BRANCH="${templateOption:dotfilesBranch}"
+export HOOK_ORDER="${HOOK_ORDER:-before}"
 
-echo "📦 Syncing dotfiles (${REPO_URL}@${BRANCH_NAME})..."
-setup-dotfiles --repo "${REPO_URL}" --branch "${BRANCH_NAME}"
-echo "✓ Dotfiles sync complete"
-echo
-
-# Configure git for safe directory
-echo "🔧 Configuring git..."
-git config --global --add safe.directory /workspaces/*
-echo "✓ Git configuration complete"
-echo
-
-# Initialize git submodules if they exist and haven't been initialized
-echo "🔧 Checking for git submodules..."
-if [ -f .gitmodules ] && [ -d .git ]; then
-	if git submodule status | grep -q '^-'; then
-		echo "📦 Initializing git submodules..."
-		git submodule update --init --recursive
-		echo "✓ Git submodules initialized"
-	else
-		echo "✓ Git submodules already initialized"
-	fi
-else
-	echo "✓ No git submodules found"
+DEFAULT_HOOK_PATH="/workspace/.devcontainer/hooks/post-create"
+if [[ ! -e $DEFAULT_HOOK_PATH ]]; then
+	DEFAULT_HOOK_PATH="$(pwd)/.devcontainer/hooks/post-create"
 fi
-echo
+export HOOK_PATH="${HOOK_PATH:-${DEFAULT_HOOK_PATH}}"
 
-echo "✓ Post-create setup complete!"
-echo "Ready to develop! 🚀"
+echo "Delegating post-create to base entrypoint..."
+echo "   DOTFILES_REPO=${DOTFILES_REPO}"
+echo "   DOTFILES_BRANCH=${DOTFILES_BRANCH}"
+echo "   HOOK_ORDER=${HOOK_ORDER}"
+echo "   HOOK_PATH=${HOOK_PATH}"
+
+if [[ ! -x $BASE_POST_CREATE ]]; then
+	echo "Expected base entrypoint at ${BASE_POST_CREATE}, but it is missing or not executable."
+	echo "Ensure the base image includes devcontainer-post-create."
+	exit 1
+fi
+
+"$BASE_POST_CREATE"
