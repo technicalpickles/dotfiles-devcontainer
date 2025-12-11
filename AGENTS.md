@@ -6,7 +6,8 @@ Auto-generated from all feature plans. Last updated: 2025-12-01
 
 - Bash scripting, YAML (devcontainer feature metadata, GitHub Actions) on Linux containers + Devcontainer feature spec, Docker/Buildx CLI (via base image), GHCR registry for publishing, GitHub Actions CI, bats for template tests, Goss for base image smoke (003-publish-dind-feature)
 - N/A (registry storage for published feature artifacts) (003-publish-dind-feature)
-- [EXTRACTED FROM ALL PLAN.MD FILES: include devcontainer base image pin, docker-in-docker feature usage, setup-dotfiles helper, and shipped tooling (fish, starship, gh, mise, AWS CLI, 1Password CLI)]
+
+[EXTRACTED FROM ALL PLAN.MD FILES: include devcontainer base image pin, docker-in-docker feature usage, setup-dotfiles helper, and shipped tooling (fish, starship, gh, mise, AWS CLI, 1Password CLI)]
 
 ## Devcontainer Constraints
 

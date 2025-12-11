@@ -309,6 +309,16 @@ This repository includes several helper scripts in the `bin/` directory:
 ./bin/smoke-test --keep-artifacts
 ```
 
+**bin/smoke-test** - Run the CI smoke test locally (build + test + cleanup)
+
+```bash
+# Run smoke test for default template
+./bin/smoke-test
+
+# Keep artifacts for debugging
+./bin/smoke-test --keep-artifacts
+```
+
 **bin/run** - Run the built container
 
 ```bash
