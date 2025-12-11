@@ -292,14 +292,21 @@ This repository includes several helper scripts in the `bin/` directory:
 ./bin/apply --help
 ```
 
-**bin/build** - Build template for local testing
+**bin/setup-test** - Set up test environment from template
 
 ```bash
-# Build the template with default options
-./bin/build
+# Set up the test environment with default options
+./bin/setup-test
+```
 
-# Build specific template
-./bin/build dotfiles
+**bin/smoke-test** - Run the CI smoke test locally (build + test + cleanup)
+
+```bash
+# Run smoke test for default template
+./bin/smoke-test
+
+# Keep artifacts for debugging
+./bin/smoke-test --keep-artifacts
 ```
 
 **bin/smoke-test** - Run the CI smoke test locally (build + test + cleanup)
