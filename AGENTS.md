@@ -23,7 +23,7 @@ tests/
 
 ## Commands
 
-[ONLY COMMANDS FOR ACTIVE TECHNOLOGIES; include helper scripts like `bin/apply`, `bin/build`, `bin/run`, `bin/stop`, and any test runners such as `bats test/apply.bats` or base-image smoke/Goss commands]
+[ONLY COMMANDS FOR ACTIVE TECHNOLOGIES; include helper scripts like `bin/apply`, `bin/setup-test`, `bin/run`, `bin/stop`, and any test runners such as `bats test/apply.bats` or base-image smoke/Goss commands]
 
 ## Code Style
 

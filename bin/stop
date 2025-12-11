@@ -27,8 +27,8 @@ EXAMPLES:
   $(basename "$0") --clean
 
 WORKFLOW:
-  After stopping, you can rebuild with:
-    bin/build
+  After stopping, you can set up a new test environment with:
+    bin/setup-test
     bin/run
 EOF
 }
@@ -100,6 +100,6 @@ if [[ "$CLEAN_BUILD_DIR" == "false" && -d "${SRC_DIR}" ]]; then
   echo
 fi
 
-echo "To rebuild and test:"
-echo "  bin/build"
+echo "To set up a new test environment:"
+echo "  bin/setup-test"
 echo "  bin/run"

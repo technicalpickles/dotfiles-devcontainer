@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the dotfiles devcontainer template
+# Set up a test environment from the dotfiles devcontainer template
 
 set -euo pipefail
 
@@ -10,13 +10,13 @@ usage() {
   cat << EOF
 Usage: $(basename "$0")
 
-Build the dotfiles devcontainer template for testing.
+Set up a test environment from the dotfiles devcontainer template.
 
 OPTIONS:
   -h, --help     Show this help message
 
 EXAMPLES:
-  # Build the dotfiles template
+  # Set up the test environment
   $(basename "$0")
 
 WORKFLOW:
@@ -24,9 +24,9 @@ WORKFLOW:
   1. Copies template to tmp/
   2. Replaces template options with defaults
   3. Copies test files
-  4. Builds the devcontainer using @devcontainers/cli
+  4. Creates and starts the devcontainer using @devcontainers/cli
 
-After building, use 'bin/run' to test the container.
+After setup completes, use 'bin/run' to execute commands in the container.
 EOF
 }
 
@@ -39,14 +39,14 @@ TEMPLATE_ID="dotfiles"
 
 SRC_DIR="$REPO_ROOT/tmp/${TEMPLATE_ID}"
 
-echo "Building template: ${TEMPLATE_ID}"
+echo "Setting up test environment: ${TEMPLATE_ID}"
 echo "Source: $REPO_ROOT/src/${TEMPLATE_ID}"
-echo "Build dir: ${SRC_DIR}"
+echo "Test dir: ${SRC_DIR}"
 echo
 
-# Clean up any existing build
+# Clean up any existing test environment
 if [[ -d "${SRC_DIR}" ]]; then
-  echo "Cleaning up existing build directory..."
+  echo "Cleaning up existing test directory..."
   rm -rf "${SRC_DIR}"
 fi
 
@@ -98,15 +98,15 @@ fi
 export DOCKER_BUILDKIT=1
 
 echo
-echo "Building Dev Container..."
+echo "Creating and starting Dev Container..."
 ID_LABEL="test-container=${TEMPLATE_ID}"
 npx --yes @devcontainers/cli@latest up --id-label "${ID_LABEL}" --workspace-folder "${SRC_DIR}"
 
 echo
-echo "✓ Build complete!"
+echo "✓ Test environment ready!"
 echo
 echo "Container is running with label: ${ID_LABEL}"
-echo "Build directory: ${SRC_DIR}"
+echo "Test directory: ${SRC_DIR}"
 echo
 echo "Next steps:"
 echo "  bin/run          # Open fish shell"
