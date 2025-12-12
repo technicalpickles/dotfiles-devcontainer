@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Source the token resolution library
+source "$SCRIPT_DIR/lib/resolve-github-token.sh"
+
 IMAGE_TAG="${IMAGE_TAG:-ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest}"
 
 usage() {
@@ -35,9 +38,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Resolve token
+if ! GITHUB_TOKEN=$(resolve_github_token); then
+  echo "Warning: Building without GitHub authentication - may hit rate limits"
+  GITHUB_TOKEN=""
+fi
+
 echo "Building base image: ${IMAGE_TAG}"
 DOCKER_BUILDKIT=1 docker build \
   --pull \
+  --secret id=github_token,env=GITHUB_TOKEN \
   -f "${REPO_ROOT}/docker/base/Dockerfile" \
   -t "${IMAGE_TAG}" \
   "${REPO_ROOT}"
