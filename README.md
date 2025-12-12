@@ -118,6 +118,70 @@ devcontainer templates apply \
   --template-args dotfilesBranch=main
 ```
 
+## GitHub Token Authentication
+
+This template automatically uses GitHub authentication across all stages (build, post-create, runtime) to avoid API rate limiting. The token is sourced from your host environment and never persisted in images or container definitions.
+
+### Authentication Flow
+
+**Build Time**: The token is passed as a Docker build secret to authenticate mise and starship installations. The secret is never persisted in image layers.
+
+**Post-Create & Runtime**: The token is forwarded from your host environment via `remoteEnv`, making it available to post-create scripts and runtime shells automatically.
+
+### Setup Options
+
+You have multiple ways to provide a GitHub token:
+
+#### Option 1: Use GitHub CLI (Recommended)
+
+```bash
+gh auth login
+```
+
+#### Option 2: Use fnox
+
+```bash
+fnox set GITHUB_TOKEN ghp_...
+```
+
+#### Option 3: Export directly
+
+```bash
+export GITHUB_TOKEN=ghp_...
+```
+
+#### Option 4: Do nothing
+
+Works but may hit rate limits (60 requests/hour unauthenticated vs 5000 authenticated)
+
+### Token Resolution Priority
+
+The template resolves tokens in this order:
+
+1. `$GITHUB_TOKEN` environment variable
+2. `fnox get GITHUB_TOKEN` (if fnox available)
+3. `gh auth token` (if GitHub CLI authenticated)
+4. No token (graceful degradation with warning)
+
+### Verification
+
+Check if GitHub API calls are authenticated:
+
+```bash
+# Inside the container
+gh api rate_limit
+```
+
+Authenticated rate limit should show `5000` requests/hour instead of `60`.
+
+### Security
+
+- Token is **never baked into images** (build secrets disappear after RUN)
+- Token is **never in container config** (forwarded at runtime from host)
+- Token is **never in version control** (sourced from host environment)
+- Each developer uses their **own token** from their own host
+- API usage is **auditable** by GitHub per token
+
 ## Docker-in-Docker Feature (published)
 
 - The template consumes a published DinD feature (no `.devcontainer/features` folder is copied into your repo).
