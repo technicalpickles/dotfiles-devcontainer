@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
+# Validate DinD feature tarball packaging and publish metadata.
+# Runtime validation (docker daemon, containers) is handled by goss tests.
 set -euo pipefail
 
-REQUIRE_DOCKER="${REQUIRE_DOCKER:-false}"
 FEATURE_SOURCE="${FEATURE_SOURCE:-./src/dotfiles/.devcontainer/features/dind}"
 FEATURE_TARBALL="${FEATURE_TARBALL:-}"
 FEATURE_VERSION="${FEATURE_VERSION:-}"
@@ -23,7 +24,7 @@ trap cleanup EXIT
 
 if [[ -n $FEATURE_TARBALL ]]; then
 	TMP_FEATURE_DIR="$(mktemp -d)"
-	echo "→ extracting feature tarball ${FEATURE_TARBALL} into ${TMP_FEATURE_DIR}"
+	echo "✓ extracting feature tarball ${FEATURE_TARBALL}"
 	tar -xf "$FEATURE_TARBALL" -C "$TMP_FEATURE_DIR"
 	found_json="$(find "$TMP_FEATURE_DIR" -type f -name devcontainer-feature.json | head -n 1 || true)"
 	if [[ -z $found_json ]]; then
@@ -31,6 +32,7 @@ if [[ -n $FEATURE_TARBALL ]]; then
 		exit 1
 	fi
 	FEATURE_SOURCE="$(cd "$(dirname "$found_json")" && pwd)"
+	echo "✓ tarball contains valid feature structure"
 elif [[ -d $FEATURE_SOURCE ]]; then
 	FEATURE_SOURCE="$(cd "$FEATURE_SOURCE" && pwd)"
 else
@@ -63,8 +65,11 @@ validate_publish_summary() {
 	fi
 
 	if [[ -z $publish_file ]]; then
+		echo "⚠️  No publish metadata provided; skipping publish validation"
 		return 0
 	fi
+
+	echo "✓ validating publish metadata"
 
 	node - "$publish_file" "$FEATURE_VERSION" <<'NODE'
 const fs = require('fs');
@@ -113,28 +118,7 @@ if (errors.length) {
 NODE
 }
 
-echo "✓ verifying Docker engine binaries are present"
-if ! command -v dockerd >/dev/null 2>&1; then
-	if [[ $REQUIRE_DOCKER == "true" ]]; then
-		echo "Docker engine (dockerd) not found; base image must include Docker bits for DinD feature" >&2
-		exit 1
-	fi
-	echo "⚠️  dockerd not available in this environment; skipping DinD wiring check (set REQUIRE_DOCKER=true to enforce)" >&2
-	exit 0
-fi
-
-echo "✓ testing DinD feature ${display_ref} from ${FEATURE_SOURCE}"
-echo "→ installing DinD feature locally to provision start-dind.sh"
-USERNAME="${USER:-$(id -un)}" bash "${FEATURE_SOURCE}/install.sh"
-
-echo "✓ starting dockerd via feature entrypoint"
-/usr/local/share/dind/start-dind.sh true
-
-echo "✓ verifying docker info succeeds"
-docker info >/dev/null 2>&1 || {
-	echo "docker info failed after starting dockerd" >&2
-	exit 1
-}
+echo "✓ validating DinD feature ${display_ref} from ${FEATURE_SOURCE}"
 
 validate_publish_summary
 

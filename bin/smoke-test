@@ -254,10 +254,15 @@ if [[ -d "${TEST_DIR}" ]]; then
   cp -Rp "${TEST_DIR}"/* "${DEST_DIR}"
 fi
 
-echo "Preparing DinD wiring test..."
-mkdir -p "${BUILD_DIR}/test/features/dind"
-cp -Rp "${REPO_ROOT}/test/features/dind/test.sh" "${BUILD_DIR}/test/features/dind/"
-FEATURE_VERSION="$(node -e "console.log(require('${REPO_ROOT}/src/dotfiles/.devcontainer/features/dind/devcontainer-feature.json').version)")"
+# Copy feature goss tests if present
+for feature_goss in "${REPO_ROOT}"/test/features/*/goss.yaml; do
+  if [[ -f "$feature_goss" ]]; then
+    feature_name="$(basename "$(dirname "$feature_goss")")"
+    echo "Copying ${feature_name} feature tests..."
+    mkdir -p "${BUILD_DIR}/test/features/${feature_name}"
+    cp -Rp "$feature_goss" "${BUILD_DIR}/test/features/${feature_name}/"
+  fi
+done
 
 echo "Building devcontainer (this may take a moment)..."
 export DOCKER_BUILDKIT=1
@@ -269,27 +274,23 @@ fi
 # but exits immediately if one is already running. See docs/devcontainer-cli.md
 "${DEVCONTAINER_CMD[@]}" up "${UP_FLAGS[@]}"
 
-echo "Running goss tests..."
+echo "Running goss tests for template..."
 "${DEVCONTAINER_CMD[@]}" exec \
   --workspace-folder "${BUILD_DIR}" \
   --id-label "${ID_LABEL}" \
   goss -g test-project/goss.yaml validate
 
-# Run DinD feature tests if present
-if [[ -f "${BUILD_DIR}/test/features/dind/test.sh" ]]; then
-  echo "Running DinD feature tests..."
-  DIND_TEST_CMD=$(cat <<'EOF'
-set -e
-cd test/features/dind
-chmod +x test.sh
-REQUIRE_DOCKER=true FEATURE_SOURCE="$(pwd)/../../../.devcontainer/features/dind" bash ./test.sh
-EOF
-)
-  "${DEVCONTAINER_CMD[@]}" exec \
-    --workspace-folder "${BUILD_DIR}" \
-    --id-label "${ID_LABEL}" \
-    env FEATURE_VERSION="${FEATURE_VERSION}" /bin/sh -c "${DIND_TEST_CMD}"
-fi
+# Run feature goss tests
+for feature_goss in "${BUILD_DIR}"/test/features/*/goss.yaml; do
+  if [[ -f "$feature_goss" ]]; then
+    feature_name="$(basename "$(dirname "$feature_goss")")"
+    echo "Running goss tests for feature: ${feature_name}..."
+    "${DEVCONTAINER_CMD[@]}" exec \
+      --workspace-folder "${BUILD_DIR}" \
+      --id-label "${ID_LABEL}" \
+      goss -g "test/features/${feature_name}/goss.yaml" validate
+  fi
+done
 
 popd >/dev/null
 
