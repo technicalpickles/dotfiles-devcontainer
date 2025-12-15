@@ -27,7 +27,7 @@ tests/
 
 ## Commands
 
-[ONLY COMMANDS FOR ACTIVE TECHNOLOGIES; include helper scripts like `bin/apply`, `bin/build`, `bin/run`, `bin/stop`, and any test runners such as `bats test/apply.bats` or base-image smoke/Goss commands]
+[ONLY COMMANDS FOR ACTIVE TECHNOLOGIES; include helper scripts like `bin/apply`, `bin/setup-test`, `bin/run`, `bin/stop`, and any test runners such as `bats test/apply.bats` or base-image smoke/Goss commands]
 
 ## Code Style
 
@@ -38,7 +38,6 @@ Shell scripts (bash), Docker/Buildx on GitHub Actions public runners: Follow sta
 - 003-publish-dind-feature: Added Bash scripting; YAML (devcontainer feature metadata, GitHub Actions) + Devcontainer CLI (features package/publish), Docker/Buildx (via base image and GH Actions), GHCR registry, bats, Goss/base smoke
 
 - 003-publish-dind-feature: Added Bash scripting, YAML (devcontainer feature metadata, GitHub Actions) on Linux containers + Devcontainer feature spec, Docker/Buildx CLI (via base image), GHCR registry for publishing, GitHub Actions CI, bats for template tests, Goss for base image smoke
-
 - 001-multi-arch-base: Added Shell scripts (bash), Docker/Buildx on GitHub Actions public runners + Docker CLI/buildx, GitHub Actions workflows, bats, Goss
 
 <!-- MANUAL ADDITIONS START -->

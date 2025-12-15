@@ -5,15 +5,18 @@ This document captures the design principles and architectural decisions made wh
 ## Core Philosophy
 
 ### 1. **Clone from Upstream, Don't Copy**
+
 **Decision:** Clone dotfiles from the upstream repository during build rather than copying the entire repo into the template.
 
 **Rationale:**
+
 - **Maintainability**: Template stays lightweight and doesn't duplicate dotfiles content
 - **Single Source of Truth**: Dotfiles repo remains the authoritative source
 - **Version Control**: Easy to specify branches/tags for different environments
 - **Size**: Template artifact remains small for faster distribution
 
 **Implementation:**
+
 ```dockerfile
 ARG DOTFILES_REPO=https://github.com/YOUR_USERNAME/dotfiles.git
 ARG DOTFILES_BRANCH=main
@@ -21,6 +24,7 @@ RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.dotfile
 ```
 
 **Template Options:**
+
 ```json
 {
   "dotfilesRepo": {
@@ -42,15 +46,18 @@ RUN git clone --branch ${DOTFILES_BRANCH} ${DOTFILES_REPO} /home/vscode/.dotfile
 ```
 
 ### 2. **Two-Phase Installation: Build-Time + Post-Create**
+
 **Decision:** Run dotfiles installer during Docker build AND in post-create hook.
 
 **Rationale:**
+
 - **Build-Time**: Bakes core configuration into the image for faster container startup
 - **Post-Create**: Allows for updates and environment-specific configuration
 - **Caching**: Docker layer caching speeds up rebuilds when dotfiles haven't changed
 - **Flexibility**: Post-create can pull latest changes without rebuilding image
 
 **Implementation:**
+
 ```dockerfile
 # Build-time: Bake dotfiles into image
 RUN cd /home/vscode/.dotfiles && bash install.sh
@@ -65,15 +72,18 @@ bash install.sh
 ```
 
 ### 3. **Local `tmp/` Directory for Build Artifacts**
+
 **Decision:** Use repository-local `tmp/` directory instead of `/tmp/` for template builds.
 
 **Rationale:**
+
 - **Inspectability**: Easy to examine built templates without navigating system directories
 - **Cleanup Control**: Can `.gitignore` but still inspect when needed
 - **Isolation**: Multiple templates can be built concurrently without conflicts
 - **Debugging**: Failed builds leave artifacts in a predictable location
 
 **Implementation:**
+
 ```bash
 SRC_DIR="$REPO_ROOT/tmp/${TEMPLATE_ID}"
 ```
@@ -83,18 +93,21 @@ tmp/
 ```
 
 ### 4. **Test-Oriented Build Scripts**
-**Decision:** Build scripts (`bin/build`, `bin/run`, `bin/stop`) mimic GitHub Actions workflow for local testing.
+
+**Decision:** Build scripts (`bin/setup-test`, `bin/run`, `bin/stop`) mimic GitHub Actions workflow for local testing.
 
 **Rationale:**
+
 - **Consistency**: Local testing matches CI behavior
 - **Fast Iteration**: Test templates without pushing to registry
 - **Template Processing**: Handles `${templateOption:...}` substitution locally
 - **Debugging**: Run and inspect containers before publishing
 
 **Implementation:**
+
 ```bash
-# Copies template, processes options, builds with devcontainer CLI
-bin/build [template-id]
+# Copies template, processes options, creates and starts devcontainer
+bin/setup-test
 
 # Executes tests or commands in built container
 bin/run [template-id] [command]
@@ -104,14 +117,17 @@ bin/stop [template-id] --clean
 ```
 
 ### 5. **Template Options as Build Args**
+
 **Decision:** Make key configuration options templatable via `devcontainer-template.json`.
 
 **Rationale:**
+
 - **Reusability**: Same template works for different roles (personal/work/devcontainer)
 - **Customization**: Users can specify their own dotfiles repo
 - **Flexibility**: Branch selection allows testing experimental configurations
 
 **Implementation:**
+
 ```json
 {
   "options": {
@@ -130,14 +146,17 @@ bin/stop [template-id] --clean
 These variables are passed to the container runtime via `containerEnv` and are available to your dotfiles `install.sh` script.
 
 ### 6. **Graceful Degradation**
+
 **Decision:** Design for failures to be non-fatal where possible.
 
 **Rationale:**
+
 - **Private Submodules**: Some git submodules may be private (cheatsheets)
 - **Optional Components**: Not every tool needs to succeed for environment to be usable
 - **Network Issues**: Transient failures shouldn't block entire build
 
 **Implementation:**
+
 ```bash
 # In install.sh
 git submodule update || {
@@ -149,7 +168,8 @@ git submodule update || {
 ## Architecture Patterns
 
 ### Repository Structure
-```
+
+```text
 dotfiles-devcontainer/
 ├── src/
 │   └── dotfiles/                     # Template definition
@@ -170,6 +190,7 @@ dotfiles-devcontainer/
 ```
 
 ### Dockerfile Layering Strategy
+
 ```dockerfile
 # Layer 1: Base system packages (rarely changes)
 RUN apt-get install build-essential curl git...
@@ -192,6 +213,7 @@ RUN cd ~/.dotfiles && bash install.sh
 ## Reference Documentation
 
 ### Key Documents Consulted
+
 1. **[VS Code Dev Container Templates — How They Work](vscode_devcontainer_templates.md)**
    - Template structure and metadata format
    - Option placeholders: `${templateOption:...}`
@@ -203,6 +225,7 @@ RUN cd ~/.dotfiles && bash install.sh
    - Git synchronization strategies
 
 ### Testing Workflow
+
 Based on `.github/workflows/test-pr.yaml` and smoke-test scripts:
 
 1. **Template Preparation**
@@ -225,23 +248,29 @@ Based on `.github/workflows/test-pr.yaml` and smoke-test scripts:
 ## Lessons Learned
 
 ### 1. **sed Portability**
+
 macOS `sed` requires empty string for in-place edits: `sed -i ''`
 Linux `sed` uses: `sed -i`
 
 **Solution:** Use macOS syntax in build script (runs on macOS during development).
 
 ### 2. **Directory Creation**
+
 Build script must create `tmp/` directory before copying template:
+
 ```bash
 mkdir -p "$REPO_ROOT/tmp"
 ```
 
 ### 3. **Post-Create Failures are Soft**
+
 Post-create hook failures don't prevent container from starting in dev mode.
 Image successfully builds even if post-create fails.
 
 ### 4. **Dotfiles Install.sh is Environment-Aware**
+
 The install script can use environment variables for customization:
+
 - Detect and skip platform-specific tools (e.g., Homebrew on Linux)
 - Differentiate between codespaces vs devcontainer contexts
 - Use custom environment variables passed via `installEnvVars` option
@@ -249,12 +278,14 @@ The install script can use environment variables for customization:
 ## Future Considerations
 
 ### Potential Enhancements
+
 1. **Multi-stage Dockerfile**: Separate build and runtime stages
 2. **Feature Extraction**: Convert dotfiles setup to standalone devcontainer feature
 3. **Caching Strategy**: Pre-build and publish images to GHCR for faster startup
 4. **Test Matrix**: Test multiple option combinations in CI
 
 ### Open Questions
+
 1. Should post-create be optional via template option?
 2. Should we support local dotfiles path for development?
 3. How to handle private dotfiles repositories?

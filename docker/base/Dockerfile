@@ -63,7 +63,9 @@ RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -
     && rm -rf /tmp/aws /tmp/awscliv2.zip
 
 # Install mise and starship
-RUN curl https://mise.run | sh \
+RUN --mount=type=secret,id=github_token \
+    export GITHUB_TOKEN=$(cat /run/secrets/github_token 2>/dev/null || echo "") \
+    && curl https://mise.run | sh \
     && mv /root/.local/bin/mise /usr/local/bin/mise \
     && curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
 

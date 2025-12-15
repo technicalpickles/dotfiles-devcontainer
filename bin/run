@@ -27,8 +27,8 @@ EXAMPLES:
   $(basename "$0") "echo test"
 
 WORKFLOW:
-  The container must already be running (use 'bin/build' first).
-  This executes commands inside the built template container.
+  The container must already be running (use 'bin/setup-test' first).
+  This executes commands inside the test container.
 EOF
 }
 
@@ -57,7 +57,7 @@ else
 fi
 
 if [[ "$NEEDS_BUILD" == "true" ]]; then
-  "$SCRIPT_DIR/build"
+  "$SCRIPT_DIR/setup-test"
   echo
 fi
 

@@ -16,8 +16,8 @@ OPTIONS:
   -h, --help     Show this help message
 
 WORKFLOW:
-  The container must already be running (use 'bin/build' first).
-  This executes the test suite inside the built template container.
+  The container must already be running (use 'bin/setup-test' first).
+  This executes the test suite inside the test container.
 
 EXAMPLES:
   # Run tests for dotfiles template
