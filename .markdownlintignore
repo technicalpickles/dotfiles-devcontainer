@@ -1,2 +1,3 @@
 .codex/prompts/*.md
 .specify/**/*.md
+docs/plans/*-implementation.md
