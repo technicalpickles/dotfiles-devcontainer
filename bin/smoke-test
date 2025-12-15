@@ -6,6 +6,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Cross-platform sed -i (macOS vs Linux)
+sed_inplace() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
+
 TEMPLATE_ID="dotfiles"
 WORKDIR=""
 KEEP_ARTIFACTS=false
@@ -145,21 +154,40 @@ BASE_IMAGE=$(awk '/^FROM/{print $2; exit}' "${BUILD_DIR}/.devcontainer/Dockerfil
 if [[ -n "${BASE_IMAGE_OVERRIDE}" ]]; then
   BASE_IMAGE="${BASE_IMAGE_OVERRIDE}"
   # Rewrite FROM to avoid using a stale cached base
-  sed -i '' "s|^FROM .*|FROM ${BASE_IMAGE}|" "${BUILD_DIR}/.devcontainer/Dockerfile"
+  sed_inplace "s|^FROM .*|FROM ${BASE_IMAGE}|" "${BUILD_DIR}/.devcontainer/Dockerfile"
 fi
 
 if [[ -n "${BASE_IMAGE}" ]]; then
   if ! docker image inspect "${BASE_IMAGE}" >/dev/null 2>&1; then
     echo "Base image not present locally: ${BASE_IMAGE}"
+
+    # Handle digest references - can't build with a digest tag
+    BUILD_TAG="${BASE_IMAGE}"
+    if [[ "${BASE_IMAGE}" == *"@sha256:"* ]]; then
+      # Strip digest, use :local tag for building
+      BUILD_TAG="${BASE_IMAGE%%@sha256:*}:local"
+      echo "Note: Base image uses digest reference; will build as ${BUILD_TAG}"
+    fi
+
     if [[ "${PULL_BASE}" == "true" ]]; then
       echo "Pulling base image: ${BASE_IMAGE}"
       if ! docker pull "${BASE_IMAGE}"; then
-        echo "Pull failed; building locally with bin/build-base --tag ${BASE_IMAGE}"
-        "${REPO_ROOT}/bin/build-base" --tag "${BASE_IMAGE}"
+        echo "Pull failed; building locally with bin/build-base --tag ${BUILD_TAG}"
+        "${REPO_ROOT}/bin/build-base" --tag "${BUILD_TAG}"
+        # Rewrite Dockerfile to use the local build tag
+        if [[ "${BUILD_TAG}" != "${BASE_IMAGE}" ]]; then
+          sed_inplace "s|^FROM .*|FROM ${BUILD_TAG}|" "${BUILD_DIR}/.devcontainer/Dockerfile"
+          BASE_IMAGE="${BUILD_TAG}"
+        fi
       fi
     else
-      echo "Building base image locally with bin/build-base --tag ${BASE_IMAGE}"
-      "${REPO_ROOT}/bin/build-base" --tag "${BASE_IMAGE}"
+      echo "Building base image locally with bin/build-base --tag ${BUILD_TAG}"
+      "${REPO_ROOT}/bin/build-base" --tag "${BUILD_TAG}"
+      # Rewrite Dockerfile to use the local build tag
+      if [[ "${BUILD_TAG}" != "${BASE_IMAGE}" ]]; then
+        sed_inplace "s|^FROM .*|FROM ${BUILD_TAG}|" "${BUILD_DIR}/.devcontainer/Dockerfile"
+        BASE_IMAGE="${BUILD_TAG}"
+      fi
     fi
   fi
 
@@ -188,7 +216,11 @@ if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
       fi
 
       OPTION_VALUE_ESCAPED=$(sed -e 's/[]\\/$*.^[]/\\&/g' <<<"${OPTION_VALUE}")
-      find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i'' -e "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
+      if [[ "$(uname)" == "Darwin" ]]; then
+        find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i '' -e "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
+      else
+        find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i -e "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
+      fi
     done <<< "${OPTIONS}"
   fi
 fi
