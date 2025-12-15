@@ -24,3 +24,9 @@
 - Build multi-architecture candidates (ARM64 and X86/AMD64) with Buildx, then run smoke/Goss per architecture before promotion.
 - Publication must block if any architecture fails validation; only promote the tested candidate manifest to release tags.
 - Record per-architecture digests and release tags (step summary) for traceability.
+
+## Devcontainer CLI usage
+
+Local test scripts and CI workflows use `@devcontainers/cli` to build and run containers. See [devcontainer-cli.md](./devcontainer-cli.md) for detailed command behaviors and gotchas.
+
+**Key point:** `devcontainer up` blocks indefinitely when starting a new container but exits immediately if one is already running. Scripts must account for this behavior.

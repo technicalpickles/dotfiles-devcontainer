@@ -271,6 +271,8 @@ UP_FLAGS=(--id-label "${ID_LABEL}" --workspace-folder "${BUILD_DIR}" --remove-ex
 if [[ "${NO_CACHE}" == "true" ]]; then
   UP_FLAGS+=(--build-no-cache)
 fi
+# NOTE: devcontainer up blocks indefinitely when starting a new container,
+# but exits immediately if one is already running. See docs/devcontainer-cli.md
 "${DEVCONTAINER_CMD[@]}" up "${UP_FLAGS[@]}"
 
 echo "Running smoke test..."

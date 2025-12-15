@@ -100,6 +100,8 @@ export DOCKER_BUILDKIT=1
 echo
 echo "Creating and starting Dev Container..."
 ID_LABEL="test-container=${TEMPLATE_ID}"
+# NOTE: devcontainer up blocks indefinitely when starting a new container,
+# but exits immediately if one is already running. See docs/devcontainer-cli.md
 npx --yes @devcontainers/cli@latest up --id-label "${ID_LABEL}" --workspace-folder "${SRC_DIR}"
 
 echo
