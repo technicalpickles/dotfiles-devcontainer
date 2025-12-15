@@ -2,10 +2,17 @@
 
 **Feature Branch**: `003-publish-dind-feature`
 **Created**: 2025-12-02
-**Status**: Draft
+**Status**: In Review
 **Input**: User description: "based on this convesration to start extracting publishable features"
 
 **Constitution Alignment**: Feature artifacts are published (not copied) to keep applied repos clean and generic; base image with `setup-dotfiles` still owns Docker tooling install; devcontainer config remains user-owned for shell/dotfiles options; read-only credential mounts stay unchanged; automated checks extend to cover published feature availability, template apply/build (bats), and base-image smoke/Goss where Docker bits are baked.
+
+## Clarifications
+
+### Session 2025-12-02
+
+- Q: What performance tolerance defines “no material slowdown” when pulling the published feature versus pre-publish wiring? → A: Build time within +10% or +30s (whichever is greater) of current baseline on GHA public runners.
+- Q: How should Docker support be defaulted across base image, DinD feature, and template wiring? → A: Base image includes Docker engine bits; template defaults to the published DinD feature wiring enabled by default, referencing the latest released feature tag on creation (CI/release flows still pin digests for determinism).
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -66,6 +73,7 @@ Consumers can pin a specific published feature version/digest and have guidance 
 - **FR-003**: Ensure the published feature conveys required Docker wiring (privileged, entrypoint, mounts, environment) that matches the Docker bits already baked into the base image.
 - **FR-004**: Document how consumers pin specific feature versions/digests and how maintainers update the reference when publishing new versions.
 - **FR-005**: Establish a repeatable publish process (including validation steps) that produces a visible versioned artifact in the registry.
+- **FR-006**: Default template wiring enables the published DinD feature by default, using the latest released feature tag when the template is created, while CI/release flows pin the feature digest for deterministic builds.
 
 ### Key Entities _(include if feature involves data)_
 
@@ -87,3 +95,29 @@ Consumers can pin a specific published feature version/digest and have guidance 
 - **SC-002**: Published feature versions are discoverable in the registry with clear version identifiers within one publish attempt.
 - **SC-003**: Consumers can pin or update the feature by changing a single version/digest reference and successfully build in 2 or fewer attempts.
 - **SC-004**: Documented fallback guidance allows users to proceed or retry after a registry outage with no more than one additional documented step.
+
+## Non-Functional Requirements
+
+- **NFR-001**: Deterministic builds only; template pins the base image digest and the DinD feature version/digest (no floating `latest` tags) for CI/release; initial template creation may start from the latest released feature tag but must record and pin the resolved digest for reproducible builds.
+- **NFR-002**: Publish/validation runs must succeed on default GitHub Actions public runners without self-hosted hardware or additional secrets beyond GHCR write scope.
+- **NFR-003**: No new secrets or writable host mounts are introduced; host `~/.aws` stays read-only and privileged use is scoped to DinD wiring only.
+- **NFR-004**: Devcontainer builds that pull the published feature complete within +10% or +30s (whichever is greater) of current baseline timings on GitHub Actions public runners and avoid duplicating Docker engine bits already in the base image.
+- **NFR-005**: Validate publish/consume flows keep host mounts (e.g., `~/.aws`) read-only, introduce no new writable host mounts or secrets, and capture validation evidence.
+
+## Dependencies & Constraints
+
+- Base image: `ghcr.io/technicalpickles/dotfiles-devcontainer/base` (pinned digest, retains `vscode` UID/GID) with Docker engine bits baked in.
+- Registry: GHCR availability for `ghcr.io/technicalpickles/devcontainer-features/dind`; consumers and CI need pull/push access as appropriate.
+- Tooling: Devcontainer CLI with feature packaging/publishing support, Docker/Buildx on GitHub Actions runners, and existing bats/Goss harnesses.
+- Credential boundary: host `~/.aws` mount remains read-only; no baked secrets or writable host mounts are permitted without review.
+
+## Risks & Mitigations
+
+- **Drift between base image Docker bits and published wiring** — Mitigate by running Goss/base smoke checks against the pinned base image digest during publish validation, recording the validated digest, and confirming security boundaries (no new writable host mounts/secrets).
+- **GHCR outage or feature unavailability** — Mitigate with pinned version/digest references, documented fallback steps (retry, digest pin, temporary vendor with cleanup), and avoiding floating tags.
+- **Hosts disallowing privileged containers** — Mitigate by clearly documenting that Docker-in-Docker requires privileged containers and offering guidance to fall back to non-DinD workflows when unsupported.
+
+## Outstanding Items (post-PR follow-up)
+
+- Record the first published DinD feature version/digest in `docs/dind-feature.md` and update the `devcontainer.json` feature reference accordingly once publish output is confirmed.
+- Run/record validation results (`devcontainer features package/publish` summary, `bats test/apply.bats`, feature test harness) and capture them in `docs/dind-feature.md` and release notes.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish the DinD devcontainer feature to GHCR using the devcontainer CLI.
+# Publish the DinD devcontainer feature to GHCR using the devcontainer CLI with validation.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,14 +11,76 @@ NAMESPACE="${NAMESPACE:-technicalpickles/devcontainer-features}"
 REGISTRY_USERNAME="${REGISTRY_USERNAME:-${GITHUB_ACTOR:-}}"
 REGISTRY_TOKEN="${REGISTRY_TOKEN:-${GHCR_PAT:-${GITHUB_TOKEN:-}}}"
 DRY_RUN="${DRY_RUN:-false}"
+SKIP_TESTS="${SKIP_TESTS:-false}"
+RESULT_PATH="${RESULT_PATH:-$REPO_ROOT/tmp/dind-feature-publish.json}"
+PACKAGE_OUT="${PACKAGE_OUT:-$REPO_ROOT/tmp/dind-feature-package}"
+VERSION_OVERRIDE="${VERSION_OVERRIDE:-${VERSION:-}}"
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [--version <semver>] [--dry-run] [--skip-tests] [--result-path <file>]
+
+Publish the DinD devcontainer feature to GHCR with packaging, validation, and JSON summary output.
+
+Options:
+  --version <semver>   Override version (must match devcontainer-feature.json)
+  --dry-run            Run publish in dry-run mode (no push)
+  --skip-tests         Skip local DinD validation (requires Docker otherwise)
+  --result-path <file> Path to write publish summary JSON (default: ${RESULT_PATH})
+  -h, --help           Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      VERSION_OVERRIDE="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN="true"
+      shift
+      ;;
+    --skip-tests)
+      SKIP_TESTS="true"
+      shift
+      ;;
+    --result-path)
+      RESULT_PATH="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 if [[ ! -f "$FEATURE_PATH/devcontainer-feature.json" ]]; then
   echo "devcontainer-feature.json not found at $FEATURE_PATH" >&2
   exit 1
 fi
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required to read feature metadata" >&2
+  exit 1
+fi
+
 read_version() {
   node -e "console.log(require(process.argv[1]).version)" "$FEATURE_PATH/devcontainer-feature.json"
+}
+
+ensure_semver() {
+  local candidate="$1"
+  if [[ ! "$candidate" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Version must be semver (e.g., 0.1.1); got: $candidate" >&2
+    exit 1
+  fi
 }
 
 DEVCONTAINER_BIN=""
@@ -31,9 +93,16 @@ else
   exit 1
 fi
 
-VERSION="$(read_version)"
-echo "Publishing DinD feature version ${VERSION} from ${FEATURE_PATH}"
-echo "Registry: ${REGISTRY}, Namespace: ${NAMESPACE}"
+FEATURE_VERSION="$(read_version)"
+if [[ -n "$VERSION_OVERRIDE" && "$VERSION_OVERRIDE" != "$FEATURE_VERSION" ]]; then
+  echo "Version override (${VERSION_OVERRIDE}) does not match devcontainer-feature.json (${FEATURE_VERSION}). Update the metadata or adjust the override." >&2
+  exit 1
+fi
+VERSION="${VERSION_OVERRIDE:-$FEATURE_VERSION}"
+ensure_semver "$VERSION"
+
+REF="${REGISTRY}/${NAMESPACE}/dind:${VERSION}"
+echo "Publishing DinD feature ${REF} from ${FEATURE_PATH}"
 
 if [[ -n "$REGISTRY_TOKEN" ]]; then
   if [[ -z "$REGISTRY_USERNAME" ]]; then
@@ -45,7 +114,24 @@ else
   echo "⚠️  No REGISTRY_TOKEN/GHCR_PAT/GITHUB_TOKEN provided. Ensure you are already logged in to ${REGISTRY}."
 fi
 
-PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE")
+echo "Packaging feature into ${PACKAGE_OUT}..."
+rm -rf "$PACKAGE_OUT"
+mkdir -p "$PACKAGE_OUT"
+$DEVCONTAINER_BIN features package "$FEATURE_PATH" --output-folder "$PACKAGE_OUT" --force-clean-output-folder
+PACKAGE_TARBALL="$(find "$PACKAGE_OUT" -maxdepth 1 -name '*.tgz' | head -n 1 || true)"
+if [[ -z "$PACKAGE_TARBALL" ]]; then
+  echo "Unable to locate packaged feature tarball under ${PACKAGE_OUT}" >&2
+  exit 1
+fi
+
+if [[ "$SKIP_TESTS" != "true" ]]; then
+  echo "Running DinD wiring validation..."
+  REQUIRE_DOCKER="${REQUIRE_DOCKER:-true}" FEATURE_TARBALL="$PACKAGE_TARBALL" FEATURE_VERSION="$VERSION" "${REPO_ROOT}/test/features/dind/test.sh"
+else
+  echo "Skipping DinD wiring validation (--skip-tests)"
+fi
+
+PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE" --version "$VERSION")
 if [[ "$DRY_RUN" == "true" ]]; then
   PUBLISH_CMD+=("--dry-run")
 fi
@@ -54,4 +140,38 @@ set -x
 "${PUBLISH_CMD[@]}"
 set +x
 
-echo "Publish command finished. Capture resulting digest/version from CLI output for docs."
+DIGEST="(dry-run)"
+if [[ "$DRY_RUN" != "true" ]]; then
+  DIGEST="$(docker buildx imagetools inspect "$REF" | awk '/^Digest: / {print $2; exit}')"
+  if [[ -z "$DIGEST" ]]; then
+    echo "Unable to resolve digest for ${REF}" >&2
+    exit 1
+  fi
+fi
+
+SUMMARY="$(node - "$FEATURE_PATH/devcontainer-feature.json" "$REGISTRY" "$NAMESPACE" "$VERSION" "$REF" "$DIGEST" "$PACKAGE_TARBALL" <<'NODE'
+const fs = require('fs');
+const [file, registry, namespace, version, ref, digest, pkg] = process.argv.slice(2);
+const feature = JSON.parse(fs.readFileSync(file, 'utf8'));
+const entrypoint = feature.entrypoint || null;
+const mounts = feature.mounts || [];
+const result = {
+  registry,
+  namespace,
+  feature: feature.id,
+  version,
+  registryRef: ref,
+  digest,
+  privileged: feature.privileged === true,
+  entrypoint: Array.isArray(entrypoint) ? entrypoint.join(' ') : entrypoint,
+  mounts,
+  containerUser: feature.containerUser || null,
+  packageTarball: pkg || null
+};
+console.log(JSON.stringify(result, null, 2));
+NODE
+)"
+
+mkdir -p "$(dirname "$RESULT_PATH")"
+printf '%s\n' "$SUMMARY" | tee "$RESULT_PATH"
+echo "Publish summary written to ${RESULT_PATH}"

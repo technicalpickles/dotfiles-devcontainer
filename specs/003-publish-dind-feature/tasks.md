@@ -1,9 +1,13 @@
+---
+description: "Task list for Publish DinD Feature for Dotfiles Devcontainer"
+---
+
 # Tasks: Publish DinD Feature for Dotfiles Devcontainer
 
 **Input**: Design documents from `/specs/003-publish-dind-feature/`
-**Prerequisites**: plan.md (required), spec.md (user stories), research.md, data-model.md, contracts/, quickstart.md
+**Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: Template/base image changes MUST include or extend automated checks (`bats test/apply.bats`, base-image smoke/Goss). Include feature packaging validation when publishing.
+**Tests**: Include/extend automated checks for template + base image changes (`devcontainer features publish` package/tests, `bats test/apply.bats`, base-image smoke/Goss). Respect security boundaries (host mounts like `~/.aws` stay read-only). Performance tolerance: devcontainer builds within +10% or +30s (whichever is greater) of baseline on GHA public runners.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing.
 
@@ -15,22 +19,22 @@
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Prepare feature source and documentation scaffolding
+**Purpose**: Project scaffolding and documentation prep
 
-- [x] T001 Create DinD feature scaffold (`devcontainer-feature.json`, `install.sh`) in `src/dotfiles/.devcontainer/features/dind/`
-- [x] T002 [P] Add DinD feature release notes + version/digest tracking stub in `docs/dind-feature.md`
+- [x] T001 Create published-feature tracking skeleton with sections for versions/digests, base image digest, performance baseline, and outage notes in `docs/dind-feature.md`
+- [x] T002 Add performance baseline capture steps (apply/build timing + Docker verification) to `specs/003-publish-dind-feature/quickstart.md`
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core feature wiring and tooling required before user stories
+**Purpose**: Core alignment required before any user story work
 
-- [x] T003 Implement Docker-in-Docker wiring (privileged, mounts, env, entrypoint) aligned to base Docker bits in `src/dotfiles/.devcontainer/features/dind/`
-- [x] T004 Add publish helper script wrapping `devcontainer features package/publish` with GHCR defaults and validation in `bin/publish-dind-feature`
-- [x] T005 Add feature validation harness (e.g., `devcontainer features test` or equivalent checks) for DinD in `test/features/dind/test.sh`
+- [x] T003 Record pinned base image digest and `setup-dotfiles` context comments to enforce determinism in `src/dotfiles/.devcontainer/devcontainer.json`
+- [x] T004 [P] Extend `docker/goss.yaml` with Docker engine/CLI expectations that match DinD wiring to guard against base-image drift
+- [x] T005 [P] Make `test/features/dind/test.sh` accept configurable feature version/digest inputs for publish validation runs
 
-**Checkpoint**: Foundation ready - user story implementation can begin
+**Checkpoint**: Foundation ready - user story implementation can now begin
 
 ---
 
@@ -38,15 +42,16 @@
 
 **Goal**: Template consumes the published DinD feature by reference; no feature files are copied into consuming repos while Docker remains functional.
 
-**Independent Test**: Apply template to a clean repo, build devcontainer, confirm Docker works and no `.devcontainer/features` folder is added locally.
+**Independent Test**: Apply template to a clean repo, build the devcontainer, and verify Docker works without a `.devcontainer/features` folder being added.
 
 ### Implementation for User Story 1
 
-- [x] T006 [US1] Update devcontainer feature reference to GHCR DinD version/digest in `src/dotfiles/.devcontainer/devcontainer.json` (remove reliance on built-in docker-in-docker feature)
-- [x] T007 [P] [US1] Add BATS coverage in `test/apply.bats` to assert GHCR DinD feature reference is pinned and no `.devcontainer/features` directory is created
-- [x] T008 [P] [US1] Document consumer usage (pin/update, expected Docker availability) for the published feature in `README.md`
+- [x] T006 [US1] Update features block to reference GHCR DinD latest released tag on creation (no vendored assets) in `src/dotfiles/.devcontainer/devcontainer.json`
+- [x] T007 [P] [US1] Adjust templating to exclude `src/dotfiles/.devcontainer/features/` when applying the template in `bin/apply`
+- [x] T008 [US1] Extend `test/apply.bats` to assert applied repos lack `.devcontainer/features` and Docker commands succeed using the prebaked base image
+- [x] T009 [P] [US1] Document default remote feature usage and verification steps in `specs/003-publish-dind-feature/quickstart.md`
 
-**Checkpoint**: User Story 1 functional and testable independently
+**Checkpoint**: User Story 1 should be fully functional and testable independently
 
 ---
 
@@ -54,16 +59,18 @@
 
 **Goal**: Maintainers can publish/version the DinD feature to GHCR with clear versioning and template reference updates.
 
-**Independent Test**: Run publish flow and verify GHCR shows the new version/digest; template reference updated to the published version.
+**Independent Test**: Run the publish flow and verify GHCR shows the new version/digest; template reference updates accordingly; validation steps pass.
 
 ### Implementation for User Story 2
 
-- [x] T009 [US2] Add GHCR publish workflow using `devcontainer features publish` with package/test steps and digest summary in `.github/workflows/feature-publish.yaml`
-- [x] T010 [P] [US2] Wire `bin/publish-dind-feature` inputs/validation to support CI and local publishes for `src/dotfiles/.devcontainer/features/dind/`
-- [x] T011 [US2] Document maintainer publish + template-update steps (semver vs digest pins) in `docs/ci.md`
-- [ ] T012 [P] [US2] Record published version/digest entry and align template reference after publish in `docs/dind-feature.md` and `src/dotfiles/.devcontainer/devcontainer.json`
+- [x] T010 [US2] Update `src/dotfiles/.devcontainer/features/dind/devcontainer-feature.json` with semver version metadata, GHCR registry path, and privileged wiring flags aligned to the base image
+- [x] T011 [P] [US2] Align `src/dotfiles/.devcontainer/features/dind/install.sh` to rely on base image Docker bits and expose required env/mount defaults
+- [x] T012 [US2] Enhance `bin/publish-dind-feature` to run `devcontainer features publish` with version input, packaging/tests, and emit version + digest output
+- [x] T013 [US2] Add `.github/workflows/publish-dind-feature.yml` to package/publish with bats + Goss validation against the pinned base image digest
+- [x] T014 [P] [US2] Update `test/features/dind/test.sh` to assert publish output includes registry path, semver tag, digest, and privileged wiring expectations
+- [x] T015 [US2] Record published version/digest and validation results in `docs/dind-feature.md` and update the template reference accordingly in `src/dotfiles/.devcontainer/devcontainer.json`
 
-**Checkpoint**: User Story 2 functional and testable independently
+**Checkpoint**: User Story 2 should be fully functional and testable independently
 
 ---
 
@@ -71,39 +78,48 @@
 
 **Goal**: Consumers can pin specific feature versions/digests and follow fallback guidance during registry outages.
 
-**Independent Test**: Configure template with pinned version/digest, simulate registry fetch failure, and verify documented fallback steps enable continuation/retry.
+**Independent Test**: Configure the template with a pinned version/digest, simulate a registry fetch failure, and verify documented fallback steps enable continuation/retry.
 
 ### Implementation for User Story 3
 
-- [x] T013 [US3] Document pin/digest fallback steps and outage recovery guidance in `docs/dind-feature.md` and `specs/003-publish-dind-feature/quickstart.md`
-- [x] T014 [US3] Annotate features block with pinned version/digest guidance in `src/dotfiles/.devcontainer/devcontainer.json`
-- [x] T015 [P] [US3] Add troubleshooting/rollback notes for registry outages in `README.md` (linking to pin/digest guidance)
+- [x] T016 [US3] Add digest pin example and deterministic-build comment to the features block for CI/release flows in `src/dotfiles/.devcontainer/devcontainer.json`
+- [x] T017 [P] [US3] Add digest resolution + pin helper workflow for CI/release in `.github/workflows/pin-dind-feature.yml`
+- [x] T018 [US3] Document retry/backoff, pinned digest, and temporary vendor fallback steps (with cleanup reminder) in `docs/dind-feature.md`
+- [x] T019 [P] [US3] Add fallback test scenario covering pinned digest or simulated registry failure to `test/apply.bats`
 
-**Checkpoint**: User Story 3 functional and testable independently
+**Checkpoint**: User Story 3 should be fully functional and testable independently
 
 ---
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] Run DinD feature validation + `bats test/apply.bats` and record results/versions in `docs/dind-feature.md`
-- [x] T017 Align quickstart and maintainer docs after implementation (cross-check `quickstart.md`, `README.md`, `docs/ci.md`, `docs/dind-feature.md`)
+- [ ] T020 [P] Capture apply/build timing on a GHA run using `bin/apply` + `bin/build` and record baseline delta (within +10% or +30s) in `specs/003-publish-dind-feature/quickstart.md`
+- [x] T021 Harden privileged + credential boundary notes (host `~/.aws` read-only, DinD requires privileged) in `docs/dind-feature.md`
+- [x] T022 [P] Add release note entry for the latest published version/digest and pinning guidance in `docs/releases/dind-feature.md`
 
 ---
 
 ## Dependencies & Execution Order
 
 - Setup (Phase 1) → Foundational (Phase 2) → User Stories (Phase 3 P1 → Phase 4 P2 → Phase 5 P3) → Polish.
-- User stories remain independently testable once foundational work is complete; prioritize P1 → P2 → P3.
-- Tests in each story should be runnable immediately after that story’s tasks without waiting for later stories.
+- Foundational tasks block all user stories; each story remains independently testable once its phase completes.
+- Template updates that rely on publish outputs (T015) depend on publish completion (T012–T014).
 
 ## Parallel Opportunities
 
 - T001 and T002 can run in parallel.
-- Within US1, T007 (tests) and T008 (docs) can proceed in parallel once T006 defines the expected feature reference.
-- Within US2, T010 (script wiring) and T012 (version/digest recording) can run in parallel after T009 establishes the workflow.
-- Within US3, T013 and T015 are parallel documentation tasks after T014 defines the annotated reference.
+- After foundational tasks, US1 tasks T007–T009 can run in parallel once T006 sets the reference expectation.
+- For US2, T011 and T014 can run in parallel after T010; T012 and T013 can proceed together; T015 follows publish outputs.
+- For US3, T017 and T019 can proceed in parallel after T016; T018 is documentation-only and parallel-safe.
+- Polish tasks T020 and T022 are parallel-safe; T021 can run independently once docs exist.
+
+## Parallel Execution Examples
+
+- **US1**: Run T007 and T009 concurrently while another contributor updates tests in T008.
+- **US2**: Execute publish automation (T012, T013) while wiring validation expectations in T014.
+- **US3**: Implement CI digest pinning (T017) while drafting outage guidance/tests (T018, T019).
 
 ## Implementation Strategy
 
-- MVP: Complete Setup + Foundational, then deliver User Story 1 end-to-end (feature reference updated, tests/docs) before proceeding.
-- Incremental: Ship US1 (consumption), then US2 (publish/version), then US3 (pin/fallback), validating after each phase via story-specific independent tests.
+- MVP first: Complete Setup + Foundational, then deliver US1 end-to-end (template reference, exclusion from apply, tests, docs).
+- Incremental: Add US2 publish/version automation next, then US3 pin/fallback. Validate after each story using the independent tests and recorded evidence before moving to Polish.

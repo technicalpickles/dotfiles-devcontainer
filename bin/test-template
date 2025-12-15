@@ -61,12 +61,33 @@ if [[ ! -f "${GOSS_FILE}" ]]; then
   exit 1
 fi
 
+DEVCONTAINER_CMD=(npx --yes @devcontainers/cli@latest)
+
 echo "Running goss tests for template: ${TEMPLATE_ID}"
 echo "Build directory: ${SRC_DIR}"
 echo "Goss file: ${GOSS_FILE}"
 echo
 
-npx --yes @devcontainers/cli@latest exec \
+"${DEVCONTAINER_CMD[@]}" exec \
   --workspace-folder "${SRC_DIR}" \
   --id-label "${ID_LABEL}" \
   goss -g test-project/goss.yaml validate
+
+# Discover and run feature goss tests
+for feature_goss in "${REPO_ROOT}"/test/features/*/goss.yaml; do
+  if [[ -f "$feature_goss" ]]; then
+    feature_name="$(basename "$(dirname "$feature_goss")")"
+    echo
+    echo "Running goss tests for feature: ${feature_name}"
+
+    # Copy feature goss file to build dir
+    feature_test_dir="${SRC_DIR}/test/features/${feature_name}"
+    mkdir -p "$feature_test_dir"
+    cp "$feature_goss" "$feature_test_dir/"
+
+    "${DEVCONTAINER_CMD[@]}" exec \
+      --workspace-folder "${SRC_DIR}" \
+      --id-label "${ID_LABEL}" \
+      goss -g "test/features/${feature_name}/goss.yaml" validate
+  fi
+done

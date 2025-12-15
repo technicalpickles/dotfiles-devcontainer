@@ -1,0 +1,26 @@
+# Goss tests for DinD (Docker-in-Docker) feature
+# These tests verify the DinD feature is correctly installed and operational
+
+file:
+  /usr/local/share/dind/start-dind.sh:
+    exists: true
+    mode: "0755"
+    filetype: file
+
+command:
+  dockerd-installed:
+    exec: "command -v dockerd"
+    exit-status: 0
+  docker-cli-installed:
+    exec: "docker --version"
+    exit-status: 0
+  docker-daemon-ready:
+    exec: "docker info"
+    exit-status: 0
+    timeout: 30000
+  docker-run-hello-world:
+    exec: "docker run --rm hello-world"
+    exit-status: 0
+    timeout: 60000
+    stdout:
+      - "Hello from Docker!"

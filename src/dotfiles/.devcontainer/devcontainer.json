@@ -1,7 +1,9 @@
 {
   "name": "Dotfiles Dev Environment",
+  // Base image pinned in Dockerfile to ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b (keep aligned with publish validation).
   "build": {
     "dockerfile": "Dockerfile",
+    // setup-dotfiles runs during image build with DOCKER_BUILD=true to reuse prebaked Docker bits.
     "args": {
       "DOTFILES_REPO": "${templateOption:dotfilesRepo}",
       "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}",
@@ -20,10 +22,12 @@
   // Uncomment the next two lines and comment out or remove them for bind mount mode
   // "workspaceMount": "source=${templateOption:volumeName},target=/workspaces/${localWorkspaceFolderBasename},type=volume",
   // "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-  // Published DinD feature reference (pinned). Update version/digest on publish.
+  // Published DinD feature reference (template creation uses latest released tag; CI/release will pin digest). Update version/digest on publish.
   "features": {
-    "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.0": {}
+    "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1": {}
   },
+  // CI/release pin example:
+  // "ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>": {}
   "customizations": {
     "vscode": {
       "extensions": ["esbenp.prettier-vscode"],

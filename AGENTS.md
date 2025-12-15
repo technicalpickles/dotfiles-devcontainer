@@ -4,6 +4,9 @@ Auto-generated from all feature plans. Last updated: 2025-12-01
 
 ## Active Technologies
 
+- Bash scripting; YAML (devcontainer feature metadata, GitHub Actions) + Devcontainer CLI (features package/publish), Docker/Buildx (via base image and GH Actions), GHCR registry, bats, Goss/base smoke (003-publish-dind-feature)
+- N/A (registry-hosted feature artifacts) (003-publish-dind-feature)
+
 - Bash scripting, YAML (devcontainer feature metadata, GitHub Actions) on Linux containers + Devcontainer feature spec, Docker/Buildx CLI (via base image), GHCR registry for publishing, GitHub Actions CI, bats for template tests, Goss for base image smoke (003-publish-dind-feature)
 - N/A (registry storage for published feature artifacts) (003-publish-dind-feature)
 
@@ -31,6 +34,8 @@ tests/
 Shell scripts (bash), Docker/Buildx on GitHub Actions public runners: Follow standard conventions
 
 ## Recent Changes
+
+- 003-publish-dind-feature: Added Bash scripting; YAML (devcontainer feature metadata, GitHub Actions) + Devcontainer CLI (features package/publish), Docker/Buildx (via base image and GH Actions), GHCR registry, bats, Goss/base smoke
 
 - 003-publish-dind-feature: Added Bash scripting, YAML (devcontainer feature metadata, GitHub Actions) on Linux containers + Devcontainer feature spec, Docker/Buildx CLI (via base image), GHCR registry for publishing, GitHub Actions CI, bats for template tests, Goss for base image smoke
 - 001-multi-arch-base: Added Shell scripts (bash), Docker/Buildx on GitHub Actions public runners + Docker CLI/buildx, GitHub Actions workflows, bats, Goss
