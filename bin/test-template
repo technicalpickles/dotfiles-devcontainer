@@ -54,11 +54,19 @@ if [[ "$NEEDS_BUILD" == "true" ]]; then
   echo
 fi
 
-echo "Running tests for template: ${TEMPLATE_ID}"
+GOSS_FILE="${REPO_ROOT}/test/${TEMPLATE_ID}/goss.yaml"
+
+if [[ ! -f "${GOSS_FILE}" ]]; then
+  echo "Missing goss file: ${GOSS_FILE}" >&2
+  exit 1
+fi
+
+echo "Running goss tests for template: ${TEMPLATE_ID}"
 echo "Build directory: ${SRC_DIR}"
+echo "Goss file: ${GOSS_FILE}"
 echo
 
 npx --yes @devcontainers/cli@latest exec \
   --workspace-folder "${SRC_DIR}" \
   --id-label "${ID_LABEL}" \
-  /bin/sh -c 'set -e && if [ -f "test-project/test.sh" ]; then cd test-project && if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi && ./test.sh; else echo "No tests found"; ls -la; fi'
+  goss -g test-project/goss.yaml validate

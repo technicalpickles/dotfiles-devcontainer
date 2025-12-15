@@ -1,0 +1,32 @@
+# Goss tests for dotfiles template (post-create state)
+# These tests verify the devcontainer is correctly configured after post-create
+
+command:
+  distro:
+    exec: "lsb_release -c"
+    exit-status: 0
+  fish-version:
+    exec: "fish --version"
+    exit-status: 0
+  starship-version:
+    exec: "starship --version"
+    exit-status: 0
+  mise-version:
+    exec: "mise --version"
+    exit-status: 0
+  gh-version:
+    exec: "gh --version"
+    exit-status: 0
+  default-shell-is-fish:
+    exec: "getent passwd vscode | cut -d: -f7"
+    exit-status: 0
+    stdout:
+      - "/usr/bin/fish"
+
+file:
+  /home/vscode/.dotfiles:
+    exists: true
+    filetype: directory
+  /home/vscode/.dotfiles/.git:
+    exists: true
+    filetype: directory
