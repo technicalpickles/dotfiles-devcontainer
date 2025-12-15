@@ -251,18 +251,6 @@ if [[ -d "${TEST_DIR}" ]]; then
   DEST_DIR="${BUILD_DIR}/test-project"
   mkdir -p "${DEST_DIR}"
   cp -Rp "${TEST_DIR}"/* "${DEST_DIR}"
-  mkdir -p "${DEST_DIR}/test-utils"
-  cp -Rp "${REPO_ROOT}/test/test-utils/"* "${DEST_DIR}/test-utils/"
-  # Ensure relative imports work for tests living directly under test-project
-  if [[ -f "${DEST_DIR}/test.sh" ]]; then
-    sed -i'' -e 's#source ../test-utils/#source ./test-utils/#' "${DEST_DIR}/test.sh"
-  else
-    echo "test.sh not found under ${DEST_DIR}; listing contents:"
-    ls -la "${DEST_DIR}"
-  fi
-  echo "test-project contents:"
-  ls -la "${DEST_DIR}"
-  ls -la "${DEST_DIR}/test-utils" || true
 fi
 
 echo "Building devcontainer (this may take a moment)..."
@@ -275,12 +263,11 @@ fi
 # but exits immediately if one is already running. See docs/devcontainer-cli.md
 "${DEVCONTAINER_CMD[@]}" up "${UP_FLAGS[@]}"
 
-echo "Running smoke test..."
-SMOKE_CMD='set -e; if [ -f "test-project/test.sh" ]; then cd test-project && if [ "$(id -u)" = "0" ]; then chmod +x test.sh; else sudo chmod +x test.sh; fi && ./test.sh; else echo "No tests found"; ls -la; fi'
+echo "Running goss tests..."
 "${DEVCONTAINER_CMD[@]}" exec \
   --workspace-folder "${BUILD_DIR}" \
   --id-label "${ID_LABEL}" \
-  /bin/sh -c "${SMOKE_CMD}"
+  goss -g test-project/goss.yaml validate
 
 popd >/dev/null
 
