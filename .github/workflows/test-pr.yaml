@@ -7,12 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       templates: ${{ steps.filter.outputs.changes }}
+      features: ${{ steps.filter.outputs.features }}
     steps:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
             dotfiles: ./**/dotfiles/**
+            features: src/dotfiles/.devcontainer/features/**
 
   test:
     needs: [detect-changes]
@@ -29,3 +31,24 @@ jobs:
         uses: ./.github/actions/smoke-test
         with:
           template: "${{ matrix.templates }}"
+
+  validate-features:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.features == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Validate dind feature (dry-run)
+        run: bin/publish-feature dind --dry-run --skip-tests
+
+      - name: Validate aws-cli feature (dry-run)
+        run: bin/publish-feature aws-cli --dry-run --skip-tests
