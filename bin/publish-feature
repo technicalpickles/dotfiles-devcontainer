@@ -1,32 +1,45 @@
 #!/usr/bin/env bash
-# Publish the DinD devcontainer feature to GHCR using the devcontainer CLI with validation.
+# Publish a devcontainer feature to GHCR using the devcontainer CLI with validation.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-FEATURE_PATH="${FEATURE_PATH:-$REPO_ROOT/src/dotfiles/.devcontainer/features/dind}"
+# Feature name from argument
+FEATURE_NAME="${1:-}"
+if [[ -z "$FEATURE_NAME" ]]; then
+  echo "Usage: $(basename "$0") <feature-name> [--version <semver>] [--dry-run] [--skip-tests]" >&2
+  echo "Example: $(basename "$0") dind" >&2
+  echo "         $(basename "$0") aws-cli --dry-run" >&2
+  exit 1
+fi
+shift
+
+FEATURE_PATH="${FEATURE_PATH:-$REPO_ROOT/src/dotfiles/.devcontainer/features/$FEATURE_NAME}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 NAMESPACE="${NAMESPACE:-technicalpickles/devcontainer-features}"
 REGISTRY_USERNAME="${REGISTRY_USERNAME:-${GITHUB_ACTOR:-}}"
 REGISTRY_TOKEN="${REGISTRY_TOKEN:-${GHCR_PAT:-${GITHUB_TOKEN:-}}}"
 DRY_RUN="${DRY_RUN:-false}"
 SKIP_TESTS="${SKIP_TESTS:-false}"
-RESULT_PATH="${RESULT_PATH:-$REPO_ROOT/tmp/dind-feature-publish.json}"
-PACKAGE_OUT="${PACKAGE_OUT:-$REPO_ROOT/tmp/dind-feature-package}"
+RESULT_PATH="${RESULT_PATH:-$REPO_ROOT/tmp/${FEATURE_NAME}-feature-publish.json}"
+PACKAGE_OUT="${PACKAGE_OUT:-$REPO_ROOT/tmp/${FEATURE_NAME}-feature-package}"
 VERSION_OVERRIDE="${VERSION_OVERRIDE:-${VERSION:-}}"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--version <semver>] [--dry-run] [--skip-tests] [--result-path <file>]
+Usage: $(basename "$0") <feature-name> [--version <semver>] [--dry-run] [--skip-tests] [--result-path <file>]
 
-Publish the DinD devcontainer feature to GHCR with packaging, validation, and JSON summary output.
+Publish a devcontainer feature to GHCR with packaging, validation, and JSON summary output.
+
+Arguments:
+  <feature-name>       Name of the feature (e.g., dind, aws-cli)
 
 Options:
   --version <semver>   Override version (must match devcontainer-feature.json)
   --dry-run            Run publish in dry-run mode (no push)
-  --skip-tests         Skip local DinD validation (requires Docker otherwise)
-  --result-path <file> Path to write publish summary JSON (default: ${RESULT_PATH})
+  --skip-tests         Skip feature validation tests
+  --result-path <file> Path to write publish summary JSON (default: tmp/<feature>-feature-publish.json)
   -h, --help           Show this help
 EOF
 }
@@ -101,8 +114,8 @@ fi
 VERSION="${VERSION_OVERRIDE:-$FEATURE_VERSION}"
 ensure_semver "$VERSION"
 
-REF="${REGISTRY}/${NAMESPACE}/dind:${VERSION}"
-echo "Publishing DinD feature ${REF} from ${FEATURE_PATH}"
+REF="${REGISTRY}/${NAMESPACE}/${FEATURE_NAME}:${VERSION}"
+echo "Publishing ${FEATURE_NAME} feature ${REF} from ${FEATURE_PATH}"
 
 if [[ -n "$REGISTRY_TOKEN" ]]; then
   if [[ -z "$REGISTRY_USERNAME" ]]; then
@@ -111,7 +124,7 @@ if [[ -n "$REGISTRY_TOKEN" ]]; then
   fi
   echo "${REGISTRY_TOKEN}" | docker login "${REGISTRY}" -u "${REGISTRY_USERNAME}" --password-stdin
 else
-  echo "⚠️  No REGISTRY_TOKEN/GHCR_PAT/GITHUB_TOKEN provided. Ensure you are already logged in to ${REGISTRY}."
+  echo "Warning: No REGISTRY_TOKEN/GHCR_PAT/GITHUB_TOKEN provided. Ensure you are already logged in to ${REGISTRY}."
 fi
 
 echo "Packaging feature into ${PACKAGE_OUT}..."
@@ -125,10 +138,15 @@ if [[ -z "$PACKAGE_TARBALL" ]]; then
 fi
 
 if [[ "$SKIP_TESTS" != "true" ]]; then
-  echo "Running DinD wiring validation..."
-  REQUIRE_DOCKER="${REQUIRE_DOCKER:-true}" FEATURE_TARBALL="$PACKAGE_TARBALL" FEATURE_VERSION="$VERSION" "${REPO_ROOT}/test/features/dind/test.sh"
+  TEST_SCRIPT="${REPO_ROOT}/test/features/${FEATURE_NAME}/test.sh"
+  if [[ -x "$TEST_SCRIPT" ]]; then
+    echo "Running ${FEATURE_NAME} feature validation..."
+    FEATURE_TARBALL="$PACKAGE_TARBALL" FEATURE_VERSION="$VERSION" "$TEST_SCRIPT"
+  else
+    echo "No test script found at ${TEST_SCRIPT}; skipping validation"
+  fi
 else
-  echo "Skipping DinD wiring validation (--skip-tests)"
+  echo "Skipping feature validation (--skip-tests)"
 fi
 
 PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE" --version "$VERSION")
@@ -149,9 +167,9 @@ if [[ "$DRY_RUN" != "true" ]]; then
   fi
 fi
 
-SUMMARY="$(node - "$FEATURE_PATH/devcontainer-feature.json" "$REGISTRY" "$NAMESPACE" "$VERSION" "$REF" "$DIGEST" "$PACKAGE_TARBALL" <<'NODE'
+SUMMARY="$(node - "$FEATURE_PATH/devcontainer-feature.json" "$REGISTRY" "$NAMESPACE" "$FEATURE_NAME" "$VERSION" "$REF" "$DIGEST" "$PACKAGE_TARBALL" <<'NODE'
 const fs = require('fs');
-const [file, registry, namespace, version, ref, digest, pkg] = process.argv.slice(2);
+const [file, registry, namespace, featureName, version, ref, digest, pkg] = process.argv.slice(2);
 const feature = JSON.parse(fs.readFileSync(file, 'utf8'));
 const entrypoint = feature.entrypoint || null;
 const mounts = feature.mounts || [];

@@ -1,8 +1,12 @@
-name: "Publish DinD Feature"
+name: "Publish Feature"
 
 on:
   workflow_dispatch:
     inputs:
+      feature:
+        description: "Feature name to publish (e.g., dind, aws-cli)"
+        required: true
+        type: string
       version:
         description: "Feature version to publish (defaults to devcontainer-feature.json)"
         required: false
@@ -16,8 +20,6 @@ on:
 env:
   BASE_IMAGE: ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b
   FEATURE_NAMESPACE: technicalpickles/devcontainer-features
-  FEATURE_PATH: src/dotfiles/.devcontainer/features/dind
-  PUBLISH_RESULT: tmp/dind-feature-publish.json
 
 permissions:
   contents: read
@@ -56,40 +58,30 @@ jobs:
       - name: Run template tests (bats)
         run: bats test/apply.bats
 
-      - name: Publish DinD feature
+      - name: Publish feature
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY_USERNAME: ${{ github.actor }}
           VERSION_OVERRIDE: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry-run }}
-          RESULT_PATH: ${{ env.PUBLISH_RESULT }}
-          PACKAGE_OUT: tmp/dind-feature-package
-        run: bin/publish-dind-feature
-
-      - name: Validate publish summary and wiring
-        env:
-          REQUIRE_DOCKER: true
-          PUBLISH_RESULT_PATH: ${{ env.PUBLISH_RESULT }}
-        run: |
-          FEATURE_TARBALL="$(find tmp/dind-feature-package -maxdepth 1 -name '*.tgz' | head -n 1 || true)"
-          if [[ -z "$FEATURE_TARBALL" ]]; then
-            echo "Packaged feature tarball missing under tmp/dind-feature-package" >&2
-            exit 1
-          fi
-          FEATURE_VERSION="$(node -e "console.log(require('./src/dotfiles/.devcontainer/features/dind/devcontainer-feature.json').version)")"
-          FEATURE_TARBALL="$FEATURE_TARBALL" FEATURE_VERSION="$FEATURE_VERSION" test/features/dind/test.sh
+          RESULT_PATH: tmp/${{ inputs.feature }}-feature-publish.json
+          PACKAGE_OUT: tmp/${{ inputs.feature }}-feature-package
+        run: bin/publish-feature ${{ inputs.feature }}
 
       - name: Publish summary
         if: always()
+        env:
+          FEATURE: ${{ inputs.feature }}
         run: |
+          RESULT_FILE="tmp/${FEATURE}-feature-publish.json"
           {
-            echo "## DinD feature publish"
-            if [[ -f "${PUBLISH_RESULT}" ]]; then
+            echo "## ${FEATURE} feature publish"
+            if [[ -f "$RESULT_FILE" ]]; then
               echo
               echo '```json'
-              cat "${PUBLISH_RESULT}"
+              cat "$RESULT_FILE"
               echo '```'
             else
-              echo "- Publish summary not found at ${PUBLISH_RESULT}"
+              echo "- Publish summary not found at ${RESULT_FILE}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"

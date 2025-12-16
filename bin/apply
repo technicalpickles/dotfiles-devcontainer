@@ -21,6 +21,7 @@ VERBOSE="${VERBOSE:-false}"
 DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
 DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
+AWS_CLI_FEATURE_REF="${AWS_CLI_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
 MODE=""
 SKIP_DIND=false
@@ -200,29 +201,42 @@ prune_vendored_features() {
   fi
 }
 
-override_dind_feature_ref() {
-  if [[ "$SKIP_DIND" == "true" ]]; then
-    return 0
-  fi
-  if [[ -z "$DIND_FEATURE_REF" ]]; then
-    return 0
-  fi
+override_feature_refs() {
   local dc_json="$TARGET_DIR/.devcontainer/devcontainer.json"
   if [[ ! -f "$dc_json" ]]; then
-    echo "⚠️  Unable to pin DinD feature reference; ${dc_json} not found" >&2
+    echo "⚠️  Unable to pin feature references; ${dc_json} not found" >&2
     return 0
   fi
-  echo "🔒 Pinning DinD feature reference to ${DIND_FEATURE_REF}"
-  python3 - "$dc_json" "$DIND_FEATURE_REF" "$TARGET_DIR" <<'PY'
+
+  local refs_to_apply=""
+  if [[ "$SKIP_DIND" != "true" && -n "$DIND_FEATURE_REF" ]]; then
+    refs_to_apply="dind:${DIND_FEATURE_REF}"
+  fi
+  if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
+    if [[ -n "$refs_to_apply" ]]; then
+      refs_to_apply="${refs_to_apply},aws-cli:${AWS_CLI_FEATURE_REF}"
+    else
+      refs_to_apply="aws-cli:${AWS_CLI_FEATURE_REF}"
+    fi
+  fi
+
+  if [[ -z "$refs_to_apply" ]]; then
+    return 0
+  fi
+
+  echo "🔒 Pinning feature references..."
+  python3 - "$dc_json" "$refs_to_apply" "$TARGET_DIR" <<'PY'
 import json, sys, re, pathlib, os
-path = pathlib.Path(sys.argv[1])
-ref_raw = sys.argv[2]
-dc_dir = path.parent
+
+path = pathlib.Path(sys.argv[1]).resolve()
+refs_raw = sys.argv[2]
+dc_dir = path.parent  # Already resolved since path is resolved
+
 raw = path.read_text()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
 obj = json.loads(clean)
 
-def normalize_ref(raw_ref: str) -> str:
+def normalize_ref(raw_ref: str, dc_dir: pathlib.Path) -> str:
     sanitized = raw_ref
     for prefix in ("./.devcontainer/", ".devcontainer/"):
         if sanitized.startswith(prefix):
@@ -244,15 +258,28 @@ def normalize_ref(raw_ref: str) -> str:
     try:
         abs_ref.relative_to(dc_dir)
     except ValueError:
-        raise SystemExit("Local DinD feature must be inside the .devcontainer/ folder")
+        raise SystemExit(f"Local feature must be inside the .devcontainer/ folder: {raw_ref}")
 
     rel_ref = os.path.relpath(abs_ref, dc_dir)
     if not rel_ref.startswith("."):
         rel_ref = f"./{rel_ref}"
     return rel_ref
 
-normalized_ref = normalize_ref(ref_raw)
-obj["features"] = {normalized_ref: {}}
+# Parse refs_to_apply: "dind:ref,aws-cli:ref"
+features = obj.get("features", {})
+for pair in refs_raw.split(","):
+    if ":" not in pair:
+        continue
+    feature_name, ref = pair.split(":", 1)
+    normalized_ref = normalize_ref(ref, dc_dir)
+    # Remove old refs for this feature
+    to_remove = [k for k in features if feature_name in k]
+    for k in to_remove:
+        del features[k]
+    features[normalized_ref] = {}
+    print(f"   {feature_name}: {normalized_ref}")
+
+obj["features"] = features
 path.write_text(json.dumps(obj, indent=2) + "\n")
 PY
 }
@@ -271,6 +298,9 @@ apply_mode_presets() {
       if [[ -z "$DIND_FEATURE_REF" ]]; then
         DIND_FEATURE_REF="./features/dind"
       fi
+      if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
+        AWS_CLI_FEATURE_REF="./features/aws-cli"
+      fi
       ;;
     ci-unpinned)
       # Use template defaults (published tag) unless caller overrides
@@ -282,6 +312,10 @@ apply_mode_presets() {
       fi
       if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
         echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if [[ -n "$AWS_CLI_FEATURE_REF" && ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE ci-pinned requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
         exit 1
       fi
       ;;
@@ -297,6 +331,16 @@ apply_mode_presets() {
       if is_local_dind_ref "$DIND_FEATURE_REF"; then
         echo "Error: MODE release does not allow local feature references" >&2
         exit 1
+      fi
+      if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
+        if [[ ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
+          echo "Error: MODE release requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+          exit 1
+        fi
+        if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
+          echo "Error: MODE release does not allow local feature references" >&2
+          exit 1
+        fi
       fi
       ;;
     *)
@@ -339,12 +383,14 @@ OPTIONS:
    -h, --help         Show this help message
 
 ENVIRONMENT VARIABLES:
-  INSTALL_ENV_VARS   Environment variables in KEY1=value1,KEY2=value2 format
-  DOTFILES_REPO      Same as --repo
-  DOTFILES_BRANCH    Same as --branch
-  USER_SHELL         Same as --shell
-  USER_SHELL_NAME    Override the terminal profile name (default: derived from USER_SHELL)
-  PLATFORM_OVERRIDE  Same as --platform (forces platform flag in devcontainer build)
+  INSTALL_ENV_VARS     Environment variables in KEY1=value1,KEY2=value2 format
+  DOTFILES_REPO        Same as --repo
+  DOTFILES_BRANCH      Same as --branch
+  USER_SHELL           Same as --shell
+  USER_SHELL_NAME      Override the terminal profile name (default: derived from USER_SHELL)
+  PLATFORM_OVERRIDE    Same as --platform (forces platform flag in devcontainer build)
+  DIND_FEATURE_REF     Pin dind feature to specific digest (ghcr.io/.../dind@sha256:<digest>)
+  AWS_CLI_FEATURE_REF  Pin aws-cli feature to specific digest (ghcr.io/.../aws-cli@sha256:<digest>)
 
 EXAMPLES:
   # Local development against vendored DinD feature (unpublished)
@@ -355,6 +401,11 @@ EXAMPLES:
 
   # CI/release with a pinned digest (required for release mode)
   DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>" bin/apply ci-pinned .
+
+  # CI/release with pinned digests for both features
+  DIND_FEATURE_REF="ghcr.io/.../dind@sha256:<digest>" \
+  AWS_CLI_FEATURE_REF="ghcr.io/.../aws-cli@sha256:<digest>" \
+  bin/apply ci-pinned .
 
    # Custom dotfiles with env vars
    bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
@@ -486,6 +537,9 @@ apply_mode_presets
 if is_local_dind_ref "$DIND_FEATURE_REF"; then
   KEEP_VENDORED_FEATURES=true
 fi
+if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
+  KEEP_VENDORED_FEATURES=true
+fi
 
 echo
 echo "Dotfiles Dev Container Template Applier"
@@ -519,10 +573,13 @@ echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
 if [[ "$SKIP_DIND" == "true" ]]; then
   echo "  Docker-in-Docker: disabled (--no-dind)"
 elif [[ -n "$DIND_FEATURE_REF" ]]; then
-  echo "  DinD feature ref override: $DIND_FEATURE_REF"
-  if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
-    echo "  DinD feature source: local (vendored features will be kept)"
-  fi
+  echo "  DinD feature ref: $DIND_FEATURE_REF"
+fi
+if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
+  echo "  AWS CLI feature ref: $AWS_CLI_FEATURE_REF"
+fi
+if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
+  echo "  Feature source: local (vendored features will be kept)"
 fi
 # Temporarily disable unbound variable check for associative array
 set +u
@@ -723,7 +780,7 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
    fi
 
-  override_dind_feature_ref
+  override_feature_refs
   prune_vendored_features
   echo "✓ Template files copied and configured"
 else
@@ -785,7 +842,7 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
    fi
 
-  override_dind_feature_ref
+  override_feature_refs
   prune_vendored_features
   echo "✓ Template applied via devcontainer CLI"
 fi

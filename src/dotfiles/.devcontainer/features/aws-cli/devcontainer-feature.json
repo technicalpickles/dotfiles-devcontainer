@@ -1,0 +1,15 @@
+{
+  "id": "aws-cli",
+  "version": "0.1.0",
+  "name": "AWS CLI Credentials Mount",
+  "description": "Mounts host ~/.aws directory read-only for AWS CLI credential access (GHCR: ghcr.io/technicalpickles/devcontainer-features/aws-cli). AWS CLI must be installed separately.",
+  "documentationURL": "https://github.com/technicalpickles/dotfiles-devcontainer",
+  "options": {},
+  "mounts": [
+    {
+      "source": "${localEnv:HOME}/.aws",
+      "target": "/home/vscode/.aws",
+      "type": "bind"
+    }
+  ]
+}
