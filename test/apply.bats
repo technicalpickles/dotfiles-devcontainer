@@ -342,3 +342,87 @@ NODE
   echo "$output"
   echo "$output" | /usr/bin/grep -q "Expected base entrypoint"
 }
+
+@test "aws-cli feature references ghcr in applied config" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+
+  run_apply aws-cli-ghcr "$repo_url" "main" "/usr/bin/fish" ""
+  [ "$status" -eq 0 ]
+
+  local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
+  if [[ ! -f "$dc_json" ]]; then
+    echo "missing devcontainer.json at $dc_json"
+    return 1
+  fi
+
+  # Verify aws-cli feature is referenced
+  run node - "$dc_json" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const raw = fs.readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const features = obj.features || {};
+const keys = Object.keys(features);
+const awsCliKey = keys.find(k => k.includes('aws-cli'));
+if (!awsCliKey) {
+  console.error('aws-cli feature not found in features:', keys);
+  process.exit(1);
+}
+if (!awsCliKey.includes('ghcr.io')) {
+  console.error('aws-cli feature does not reference ghcr:', awsCliKey);
+  process.exit(1);
+}
+console.log('aws-cli feature found:', awsCliKey);
+NODE
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output"
+  fi
+  [ "$status" -eq 0 ]
+}
+
+@test "local-dev mode keeps vendored aws-cli feature" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+
+  WORKDIR="$(mktemp -d "/tmp/devcontainer-local-dev-XXXX")"
+  run env DOTFILES_REPO="$repo_url" DOTFILES_BRANCH="main" USER_SHELL="/usr/bin/fish" \
+    bash -x "$APPLY" local-dev --repo "$repo_url" --branch "main" --shell "/usr/bin/fish" "$WORKDIR"
+  if [[ "$status" -ne 0 ]]; then
+    echo "apply failed:"
+    echo "$output"
+  fi
+  [ "$status" -eq 0 ]
+
+  # Verify vendored features directory exists
+  [ -d "$WORKDIR/.devcontainer/features" ]
+  [ -d "$WORKDIR/.devcontainer/features/aws-cli" ]
+  [ -f "$WORKDIR/.devcontainer/features/aws-cli/devcontainer-feature.json" ]
+
+  # Verify aws-cli feature references local path
+  local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
+  run node - "$dc_json" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const raw = fs.readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+const obj = JSON.parse(raw);
+const features = obj.features || {};
+const keys = Object.keys(features);
+const awsCliKey = keys.find(k => k.includes('aws-cli'));
+if (!awsCliKey) {
+  console.error('aws-cli feature not found in features:', keys);
+  process.exit(1);
+}
+if (!awsCliKey.startsWith('./')) {
+  console.error('aws-cli feature should be local ref in local-dev mode:', awsCliKey);
+  process.exit(1);
+}
+console.log('local aws-cli feature found:', awsCliKey);
+NODE
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output"
+  fi
+  [ "$status" -eq 0 ]
+}
