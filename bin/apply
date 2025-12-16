@@ -272,6 +272,9 @@ apply_mode_presets() {
       if [[ -z "$DIND_FEATURE_REF" ]]; then
         DIND_FEATURE_REF="./features/dind"
       fi
+      if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
+        AWS_CLI_FEATURE_REF="./features/aws-cli"
+      fi
       ;;
     ci-unpinned)
       # Use template defaults (published tag) unless caller overrides
@@ -283,6 +286,10 @@ apply_mode_presets() {
       fi
       if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
         echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if [[ -n "$AWS_CLI_FEATURE_REF" && ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE ci-pinned requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
         exit 1
       fi
       ;;
@@ -298,6 +305,16 @@ apply_mode_presets() {
       if is_local_dind_ref "$DIND_FEATURE_REF"; then
         echo "Error: MODE release does not allow local feature references" >&2
         exit 1
+      fi
+      if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
+        if [[ ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
+          echo "Error: MODE release requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+          exit 1
+        fi
+        if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
+          echo "Error: MODE release does not allow local feature references" >&2
+          exit 1
+        fi
       fi
       ;;
     *)
