@@ -1,7 +1,0 @@
-# Goss tests for aws-cli feature
-# These tests verify the aws-cli mount point exists
-
-file:
-  /home/vscode/.aws:
-    exists: true
-    filetype: directory

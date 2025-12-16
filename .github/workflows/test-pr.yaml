@@ -6,7 +6,7 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      templates: ${{ steps.filter.outputs.changes }}
+      dotfiles: ${{ steps.filter.outputs.dotfiles }}
       features: ${{ steps.filter.outputs.features }}
     steps:
       - uses: dorny/paths-filter@v3
@@ -18,19 +18,17 @@ jobs:
 
   test:
     needs: [detect-changes]
+    if: needs.detect-changes.outputs.dotfiles == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
-    strategy:
-      matrix:
-        templates: ${{ fromJSON(needs.detect-changes.outputs.templates) }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Smoke test for '${{ matrix.templates }}'
+      - name: Smoke test for dotfiles
         id: smoke_test
         uses: ./.github/actions/smoke-test
         with:
-          template: "${{ matrix.templates }}"
+          template: "dotfiles"
 
   validate-features:
     needs: [detect-changes]
