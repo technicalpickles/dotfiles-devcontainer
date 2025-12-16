@@ -10,9 +10,32 @@
 
 ---
 
+## Progress
+
+| Phase | Task                                                          | Status      |
+| ----- | ------------------------------------------------------------- | ----------- |
+| 1     | 1.1: Create Generic bin/publish-feature Script                | ✅ Complete |
+| 1     | 1.2: Create Generic Publish Workflow                          | ✅ Complete |
+| 1     | 1.3: Create Consolidated docs/features.md                     | ✅ Complete |
+| 1     | 1.4: Remove Old DinD-Specific Files                           | ✅ Complete |
+| 1     | 1.5: Extend test-pr.yaml with Feature Dry-Run Validation      | ✅ Complete |
+| 2     | 2.1: Create aws-cli Feature Structure                         | ✅ Complete |
+| 2     | 2.2: Update devcontainer.json Template                        | ⏳ Pending  |
+| 3     | 3.1: Add AWS_CLI_FEATURE_REF Variable                         | ⏳ Pending  |
+| 3     | 3.2: Update apply_mode_presets for AWS CLI                    | ⏳ Pending  |
+| 3     | 3.3: Update override_dind_feature_ref to Handle Both Features | ⏳ Pending  |
+| 3     | 3.4: Update prune_vendored_features for aws-cli               | ⏳ Pending  |
+| 3     | 3.5: Update Usage Documentation in bin/apply                  | ⏳ Pending  |
+| 4     | 4.1: Create test/publish-feature.bats                         | ⏳ Pending  |
+| 4     | 4.2: Create aws-cli Feature Test Structure                    | ⏳ Pending  |
+| 4     | 4.3: Update apply.bats for aws-cli                            | ⏳ Pending  |
+| 4     | 4.4: Run Full Test Suite                                      | ⏳ Pending  |
+
+---
+
 ## Phase 1: Consolidate DinD Infrastructure
 
-### Task 1.1: Create Generic bin/publish-feature Script
+### Task 1.1: Create Generic bin/publish-feature Script ✅
 
 **Files:**
 
@@ -236,7 +259,7 @@ Takes feature name as first argument."
 
 ---
 
-### Task 1.2: Create Generic Publish Workflow
+### Task 1.2: Create Generic Publish Workflow ✅
 
 **Files:**
 
@@ -347,7 +370,7 @@ Takes feature name as input parameter."
 
 ---
 
-### Task 1.3: Create Consolidated docs/features.md
+### Task 1.3: Create Consolidated docs/features.md ✅
 
 **Files:**
 
@@ -446,7 +469,7 @@ Replaces per-feature docs with single reference document."
 
 ---
 
-### Task 1.4: Remove Old DinD-Specific Files
+### Task 1.4: Remove Old DinD-Specific Files ✅
 
 **Files:**
 
@@ -472,7 +495,7 @@ Replaced by generic bin/publish-feature and publish-feature.yml"
 
 ---
 
-### Task 1.5: Extend test-pr.yaml with Feature Dry-Run Validation
+### Task 1.5: Extend test-pr.yaml with Feature Dry-Run Validation ✅
 
 **Files:**
 
@@ -553,7 +576,7 @@ feature files change on PRs."
 
 ## Phase 2: Add aws-cli Feature
 
-### Task 2.1: Create aws-cli Feature Structure
+### Task 2.1: Create aws-cli Feature Structure ✅
 
 **Files:**
 
