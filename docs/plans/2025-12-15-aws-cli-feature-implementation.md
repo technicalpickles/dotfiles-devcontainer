@@ -472,6 +472,85 @@ Replaced by generic bin/publish-feature and publish-feature.yml"
 
 ---
 
+### Task 1.5: Extend test-pr.yaml with Feature Dry-Run Validation
+
+**Files:**
+
+- Modify: `.github/workflows/test-pr.yaml`
+
+**Step 1: Add feature path filter and validation job**
+
+Update the workflow to detect feature changes and run dry-run validation:
+
+```yaml
+name: "CI - Test Templates"
+on:
+  pull_request:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      templates: ${{ steps.filter.outputs.changes }}
+      features: ${{ steps.filter.outputs.features }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dotfiles: ./**/dotfiles/**
+            features: src/dotfiles/.devcontainer/features/**
+
+  test:
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        templates: ${{ fromJSON(needs.detect-changes.outputs.templates) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke test for '${{ matrix.templates }}'
+        id: smoke_test
+        uses: ./.github/actions/smoke-test
+        with:
+          template: "${{ matrix.templates }}"
+
+  validate-features:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.features == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Validate dind feature (dry-run)
+        run: bin/publish-feature dind --dry-run --skip-tests
+
+      - name: Validate aws-cli feature (dry-run)
+        run: bin/publish-feature aws-cli --dry-run --skip-tests
+```
+
+**Step 2: Commit**
+
+```bash
+git add .github/workflows/test-pr.yaml
+git commit -m "ci: add feature dry-run validation to test-pr workflow
+
+Runs bin/publish-feature --dry-run for each feature when
+feature files change on PRs."
+```
+
+---
+
 ## Phase 2: Add aws-cli Feature
 
 ### Task 2.1: Create aws-cli Feature Structure
@@ -881,7 +960,79 @@ git commit -m "docs(apply): document AWS_CLI_FEATURE_REF in usage"
 
 ## Phase 4: Testing
 
-### Task 4.1: Create aws-cli Feature Test Structure
+### Task 4.1: Create test/publish-feature.bats
+
+**Files:**
+
+- Create: `test/publish-feature.bats`
+
+**Step 1: Create bats test file for bin/publish-feature**
+
+```bash
+#!/usr/bin/env bats
+
+setup() {
+  REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
+  PUBLISH="$REPO_ROOT/bin/publish-feature"
+}
+
+@test "missing feature name shows usage and exits non-zero" {
+  run "$PUBLISH"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Usage:"* ]]
+}
+
+@test "--help shows usage and exits zero" {
+  run "$PUBLISH" --help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Usage:"* ]]
+  [[ "$output" == *"<feature-name>"* ]]
+}
+
+@test "non-existent feature fails with clear error" {
+  run "$PUBLISH" nonexistent-feature --dry-run --skip-tests
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"devcontainer-feature.json not found"* ]]
+}
+
+@test "dind feature dry-run produces valid JSON output" {
+  run "$PUBLISH" dind --dry-run --skip-tests
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"feature": "dind"'* ]]
+  [[ "$output" == *'"registry": "ghcr.io"'* ]]
+}
+
+@test "aws-cli feature dry-run produces valid JSON output" {
+  # This test will pass once aws-cli feature is created
+  if [[ ! -d "$REPO_ROOT/src/dotfiles/.devcontainer/features/aws-cli" ]]; then
+    skip "aws-cli feature not yet created"
+  fi
+  run "$PUBLISH" aws-cli --dry-run --skip-tests
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"feature": "aws-cli"'* ]]
+}
+```
+
+**Step 2: Run tests**
+
+```bash
+bats test/publish-feature.bats
+```
+
+Expected: All tests pass (aws-cli test may skip if feature not created yet)
+
+**Step 3: Commit**
+
+```bash
+git add test/publish-feature.bats
+git commit -m "test: add bats tests for bin/publish-feature
+
+Tests usage, help, error handling, and dry-run output."
+```
+
+---
+
+### Task 4.2: Create aws-cli Feature Test Structure
 
 **Files:**
 
@@ -1005,7 +1156,7 @@ Validates feature metadata and mount configuration."
 
 ---
 
-### Task 4.2: Update apply.bats for aws-cli
+### Task 4.3: Update apply.bats for aws-cli
 
 **Files:**
 
@@ -1024,12 +1175,12 @@ git commit -m "test: add aws-cli feature checks to apply.bats"
 
 ---
 
-### Task 4.3: Run Full Test Suite
+### Task 4.4: Run Full Test Suite
 
-**Step 1: Run bats tests**
+**Step 1: Run all bats tests**
 
 ```bash
-bats test/apply.bats
+bats test/apply.bats test/publish-feature.bats
 ```
 
 Expected: All tests pass
@@ -1064,6 +1215,7 @@ bin/apply ci-unpinned /tmp/test-apply-ci
 - [ ] `bin/publish-feature dind --dry-run` works
 - [ ] `bin/publish-feature aws-cli --dry-run` works
 - [ ] `.github/workflows/publish-feature.yml` is valid YAML
+- [ ] `.github/workflows/test-pr.yaml` includes feature validation job
 - [ ] `docs/features.md` documents both features
 - [ ] Old dind-specific files removed
 - [ ] `src/dotfiles/.devcontainer/features/aws-cli/` exists with all files
@@ -1071,5 +1223,5 @@ bin/apply ci-unpinned /tmp/test-apply-ci
 - [ ] `bin/apply local-dev` copies both vendored features
 - [ ] `bin/apply ci-unpinned` removes vendored features
 - [ ] `AWS_CLI_FEATURE_REF` validation works in ci-pinned/release modes
-- [ ] All bats tests pass
+- [ ] All bats tests pass (`test/apply.bats` and `test/publish-feature.bats`)
 - [ ] Feature test scripts pass
