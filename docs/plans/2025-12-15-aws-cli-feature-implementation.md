@@ -23,12 +23,12 @@
 | 2     | 2.2: Update devcontainer.json Template                        | ✅ Complete |
 | 3     | 3.1: Add AWS_CLI_FEATURE_REF Variable                         | ✅ Complete |
 | 3     | 3.2: Update apply_mode_presets for AWS CLI                    | ✅ Complete |
-| 3     | 3.3: Update override_dind_feature_ref to Handle Both Features | ⏳ Pending  |
-| 3     | 3.4: Update prune_vendored_features for aws-cli               | ⏳ Pending  |
-| 3     | 3.5: Update Usage Documentation in bin/apply                  | ⏳ Pending  |
-| 4     | 4.1: Create test/publish-feature.bats                         | ⏳ Pending  |
-| 4     | 4.2: Create aws-cli Feature Test Structure                    | ⏳ Pending  |
-| 4     | 4.3: Update apply.bats for aws-cli                            | ⏳ Pending  |
+| 3     | 3.3: Update override_dind_feature_ref to Handle Both Features | ✅ Complete |
+| 3     | 3.4: Update prune_vendored_features for aws-cli               | ✅ Complete |
+| 3     | 3.5: Update Usage Documentation in bin/apply                  | ✅ Complete |
+| 4     | 4.1: Create test/publish-feature.bats                         | ✅ Complete |
+| 4     | 4.2: Create aws-cli Feature Test Structure                    | ✅ Complete |
+| 4     | 4.3: Update apply.bats for aws-cli                            | ✅ Complete |
 | 4     | 4.4: Run Full Test Suite                                      | ⏳ Pending  |
 
 ---
