@@ -1,0 +1,87 @@
+name: "Publish Feature"
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: "Feature name to publish (e.g., dind, aws-cli)"
+        required: true
+        type: string
+      version:
+        description: "Feature version to publish (defaults to devcontainer-feature.json)"
+        required: false
+        type: string
+      dry-run:
+        description: "Run publish without pushing"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BASE_IMAGE: ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b
+  FEATURE_NAMESPACE: technicalpickles/devcontainer-features
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install devcontainer CLI and bats
+        run: npm install -g @devcontainers/cli bats-core
+
+      - name: Pull pinned base image
+        run: docker pull "${BASE_IMAGE}"
+
+      - name: Run base image smoke (Goss + setup-dotfiles)
+        run: bin/test-base --tag "${BASE_IMAGE}"
+
+      - name: Run template tests (bats)
+        run: bats test/apply.bats
+
+      - name: Publish feature
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          VERSION_OVERRIDE: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          RESULT_PATH: tmp/${{ inputs.feature }}-feature-publish.json
+          PACKAGE_OUT: tmp/${{ inputs.feature }}-feature-package
+        run: bin/publish-feature ${{ inputs.feature }}
+
+      - name: Publish summary
+        if: always()
+        env:
+          FEATURE: ${{ inputs.feature }}
+        run: |
+          RESULT_FILE="tmp/${FEATURE}-feature-publish.json"
+          {
+            echo "## ${FEATURE} feature publish"
+            if [[ -f "$RESULT_FILE" ]]; then
+              echo
+              echo '```json'
+              cat "$RESULT_FILE"
+              echo '```'
+            else
+              echo "- Publish summary not found at ${RESULT_FILE}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

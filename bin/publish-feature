@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# Publish a devcontainer feature to GHCR using the devcontainer CLI with validation.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Feature name from argument
+FEATURE_NAME="${1:-}"
+if [[ -z "$FEATURE_NAME" ]]; then
+  echo "Usage: $(basename "$0") <feature-name> [--version <semver>] [--dry-run] [--skip-tests]" >&2
+  echo "Example: $(basename "$0") dind" >&2
+  echo "         $(basename "$0") aws-cli --dry-run" >&2
+  exit 1
+fi
+shift
+
+FEATURE_PATH="${FEATURE_PATH:-$REPO_ROOT/src/dotfiles/.devcontainer/features/$FEATURE_NAME}"
+REGISTRY="${REGISTRY:-ghcr.io}"
+NAMESPACE="${NAMESPACE:-technicalpickles/devcontainer-features}"
+REGISTRY_USERNAME="${REGISTRY_USERNAME:-${GITHUB_ACTOR:-}}"
+REGISTRY_TOKEN="${REGISTRY_TOKEN:-${GHCR_PAT:-${GITHUB_TOKEN:-}}}"
+DRY_RUN="${DRY_RUN:-false}"
+SKIP_TESTS="${SKIP_TESTS:-false}"
+RESULT_PATH="${RESULT_PATH:-$REPO_ROOT/tmp/${FEATURE_NAME}-feature-publish.json}"
+PACKAGE_OUT="${PACKAGE_OUT:-$REPO_ROOT/tmp/${FEATURE_NAME}-feature-package}"
+VERSION_OVERRIDE="${VERSION_OVERRIDE:-${VERSION:-}}"
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") <feature-name> [--version <semver>] [--dry-run] [--skip-tests] [--result-path <file>]
+
+Publish a devcontainer feature to GHCR with packaging, validation, and JSON summary output.
+
+Arguments:
+  <feature-name>       Name of the feature (e.g., dind, aws-cli)
+
+Options:
+  --version <semver>   Override version (must match devcontainer-feature.json)
+  --dry-run            Run publish in dry-run mode (no push)
+  --skip-tests         Skip feature validation tests
+  --result-path <file> Path to write publish summary JSON (default: tmp/<feature>-feature-publish.json)
+  -h, --help           Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      VERSION_OVERRIDE="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN="true"
+      shift
+      ;;
+    --skip-tests)
+      SKIP_TESTS="true"
+      shift
+      ;;
+    --result-path)
+      RESULT_PATH="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ ! -f "$FEATURE_PATH/devcontainer-feature.json" ]]; then
+  echo "devcontainer-feature.json not found at $FEATURE_PATH" >&2
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required to read feature metadata" >&2
+  exit 1
+fi
+
+read_version() {
+  node -e "console.log(require(process.argv[1]).version)" "$FEATURE_PATH/devcontainer-feature.json"
+}
+
+ensure_semver() {
+  local candidate="$1"
+  if [[ ! "$candidate" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Version must be semver (e.g., 0.1.1); got: $candidate" >&2
+    exit 1
+  fi
+}
+
+DEVCONTAINER_BIN=""
+if command -v devcontainer >/dev/null 2>&1; then
+  DEVCONTAINER_BIN="devcontainer"
+elif command -v npx >/dev/null 2>&1; then
+  DEVCONTAINER_BIN="npx --yes @devcontainers/cli"
+else
+  echo "devcontainer CLI not found (install or use npx @devcontainers/cli)" >&2
+  exit 1
+fi
+
+FEATURE_VERSION="$(read_version)"
+if [[ -n "$VERSION_OVERRIDE" && "$VERSION_OVERRIDE" != "$FEATURE_VERSION" ]]; then
+  echo "Version override (${VERSION_OVERRIDE}) does not match devcontainer-feature.json (${FEATURE_VERSION}). Update the metadata or adjust the override." >&2
+  exit 1
+fi
+VERSION="${VERSION_OVERRIDE:-$FEATURE_VERSION}"
+ensure_semver "$VERSION"
+
+REF="${REGISTRY}/${NAMESPACE}/${FEATURE_NAME}:${VERSION}"
+echo "Publishing ${FEATURE_NAME} feature ${REF} from ${FEATURE_PATH}"
+
+if [[ -n "$REGISTRY_TOKEN" ]]; then
+  if [[ -z "$REGISTRY_USERNAME" ]]; then
+    echo "REGISTRY_TOKEN provided but REGISTRY_USERNAME is empty; set REGISTRY_USERNAME (or GITHUB_ACTOR in CI)." >&2
+    exit 1
+  fi
+  echo "${REGISTRY_TOKEN}" | docker login "${REGISTRY}" -u "${REGISTRY_USERNAME}" --password-stdin
+else
+  echo "Warning: No REGISTRY_TOKEN/GHCR_PAT/GITHUB_TOKEN provided. Ensure you are already logged in to ${REGISTRY}."
+fi
+
+echo "Packaging feature into ${PACKAGE_OUT}..."
+rm -rf "$PACKAGE_OUT"
+mkdir -p "$PACKAGE_OUT"
+$DEVCONTAINER_BIN features package "$FEATURE_PATH" --output-folder "$PACKAGE_OUT" --force-clean-output-folder
+PACKAGE_TARBALL="$(find "$PACKAGE_OUT" -maxdepth 1 -name '*.tgz' | head -n 1 || true)"
+if [[ -z "$PACKAGE_TARBALL" ]]; then
+  echo "Unable to locate packaged feature tarball under ${PACKAGE_OUT}" >&2
+  exit 1
+fi
+
+if [[ "$SKIP_TESTS" != "true" ]]; then
+  TEST_SCRIPT="${REPO_ROOT}/test/features/${FEATURE_NAME}/test.sh"
+  if [[ -x "$TEST_SCRIPT" ]]; then
+    echo "Running ${FEATURE_NAME} feature validation..."
+    FEATURE_TARBALL="$PACKAGE_TARBALL" FEATURE_VERSION="$VERSION" "$TEST_SCRIPT"
+  else
+    echo "No test script found at ${TEST_SCRIPT}; skipping validation"
+  fi
+else
+  echo "Skipping feature validation (--skip-tests)"
+fi
+
+PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE" --version "$VERSION")
+if [[ "$DRY_RUN" == "true" ]]; then
+  PUBLISH_CMD+=("--dry-run")
+fi
+
+set -x
+"${PUBLISH_CMD[@]}"
+set +x
+
+DIGEST="(dry-run)"
+if [[ "$DRY_RUN" != "true" ]]; then
+  DIGEST="$(docker buildx imagetools inspect "$REF" | awk '/^Digest: / {print $2; exit}')"
+  if [[ -z "$DIGEST" ]]; then
+    echo "Unable to resolve digest for ${REF}" >&2
+    exit 1
+  fi
+fi
+
+SUMMARY="$(node - "$FEATURE_PATH/devcontainer-feature.json" "$REGISTRY" "$NAMESPACE" "$FEATURE_NAME" "$VERSION" "$REF" "$DIGEST" "$PACKAGE_TARBALL" <<'NODE'
+const fs = require('fs');
+const [file, registry, namespace, featureName, version, ref, digest, pkg] = process.argv.slice(2);
+const feature = JSON.parse(fs.readFileSync(file, 'utf8'));
+const entrypoint = feature.entrypoint || null;
+const mounts = feature.mounts || [];
+const result = {
+  registry,
+  namespace,
+  feature: feature.id,
+  version,
+  registryRef: ref,
+  digest,
+  privileged: feature.privileged === true,
+  entrypoint: Array.isArray(entrypoint) ? entrypoint.join(' ') : entrypoint,
+  mounts,
+  containerUser: feature.containerUser || null,
+  packageTarball: pkg || null
+};
+console.log(JSON.stringify(result, null, 2));
+NODE
+)"
+
+mkdir -p "$(dirname "$RESULT_PATH")"
+printf '%s\n' "$SUMMARY" | tee "$RESULT_PATH"
+echo "Publish summary written to ${RESULT_PATH}"
