@@ -20,9 +20,9 @@
 | 1     | 1.4: Remove Old DinD-Specific Files                           | ✅ Complete |
 | 1     | 1.5: Extend test-pr.yaml with Feature Dry-Run Validation      | ✅ Complete |
 | 2     | 2.1: Create aws-cli Feature Structure                         | ✅ Complete |
-| 2     | 2.2: Update devcontainer.json Template                        | ⏳ Pending  |
-| 3     | 3.1: Add AWS_CLI_FEATURE_REF Variable                         | ⏳ Pending  |
-| 3     | 3.2: Update apply_mode_presets for AWS CLI                    | ⏳ Pending  |
+| 2     | 2.2: Update devcontainer.json Template                        | ✅ Complete |
+| 3     | 3.1: Add AWS_CLI_FEATURE_REF Variable                         | ✅ Complete |
+| 3     | 3.2: Update apply_mode_presets for AWS CLI                    | ✅ Complete |
 | 3     | 3.3: Update override_dind_feature_ref to Handle Both Features | ⏳ Pending  |
 | 3     | 3.4: Update prune_vendored_features for aws-cli               | ⏳ Pending  |
 | 3     | 3.5: Update Usage Documentation in bin/apply                  | ⏳ Pending  |
