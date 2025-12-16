@@ -228,9 +228,9 @@ override_feature_refs() {
   python3 - "$dc_json" "$refs_to_apply" "$TARGET_DIR" <<'PY'
 import json, sys, re, pathlib, os
 
-path = pathlib.Path(sys.argv[1])
+path = pathlib.Path(sys.argv[1]).resolve()
 refs_raw = sys.argv[2]
-dc_dir = path.parent
+dc_dir = path.parent  # Already resolved since path is resolved
 
 raw = path.read_text()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)

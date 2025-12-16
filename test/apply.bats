@@ -194,10 +194,11 @@ const fs = require('fs');
 const path = process.argv[2];
 const raw = fs.readFileSync(path, 'utf8').replace(/^\s*\/\/.*$/gm, '');
 const obj = JSON.parse(raw);
-const expected = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1";
+const dindRef = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1";
+const awsCliRef = "ghcr.io/technicalpickles/devcontainer-features/aws-cli:0.1.0";
 const features = obj.features || {};
 const keys = Object.keys(features);
-if (keys.length !== 1 || !features[expected]) {
+if (keys.length !== 2 || !features[dindRef] || !features[awsCliRef]) {
   console.error('feature reference mismatch', features);
   process.exit(1);
 }
@@ -236,14 +237,15 @@ NODE
   [ ! -d "$WORKDIR/.devcontainer/features" ]
 
   local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
-  run node - "$dc_json" "$pinned_ref" <<'NODE'
+  local aws_cli_ref="ghcr.io/technicalpickles/devcontainer-features/aws-cli:0.1.0"
+  run node - "$dc_json" "$pinned_ref" "$aws_cli_ref" <<'NODE'
 const fs = require('fs');
-const [file, expected] = process.argv.slice(2);
+const [file, dindRef, awsCliRef] = process.argv.slice(2);
 const raw = fs.readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '');
 const obj = JSON.parse(raw);
 const features = obj.features || {};
 const keys = Object.keys(features);
-if (keys.length !== 1 || keys[0] !== expected) {
+if (keys.length !== 2 || !features[dindRef] || !features[awsCliRef]) {
   console.error('pinned ref mismatch', features);
   process.exit(1);
 }
