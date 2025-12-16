@@ -14,9 +14,7 @@
   "remoteEnv": {
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
   },
-  "mounts": [
-    "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,readonly"
-  ],
+  "mounts": [],
   "containerEnv": "${templateOption:installEnvVars}",
   // To use a named volume for better performance on macOS:
   // Uncomment the next two lines and comment out or remove them for bind mount mode
@@ -24,7 +22,8 @@
   // "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   // Published DinD feature reference (template creation uses latest released tag; CI/release will pin digest). Update version/digest on publish.
   "features": {
-    "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1": {}
+    "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1": {},
+    "ghcr.io/technicalpickles/devcontainer-features/aws-cli:0.1.0": {}
   },
   // CI/release pin example:
   // "ghcr.io/technicalpickles/devcontainer-features/dind@sha256:<digest>": {}
