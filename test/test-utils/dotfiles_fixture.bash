@@ -6,12 +6,13 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" 2>/dev/null || pwd)"
 
 find_repo_root() {
 	local dir="${SCRIPT_DIR:-$(pwd)}"
-	while [[ $dir != "/" ]]; do
-		if [[ -d "$dir/.git" ]]; then
+	while [[ -n $dir && $dir != "/" ]]; do
+		# Handle both regular repos (.git directory) and worktrees (.git file)
+		if [[ -d "$dir/.git" || -f "$dir/.git" ]]; then
 			echo "$dir"
 			return 0
 		fi
-		dir="$(cd "$dir/.." 2>/dev/null || pwd)"
+		dir="$(cd "$dir/.." 2>/dev/null && pwd)"
 	done
 	pwd
 }
