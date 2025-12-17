@@ -22,6 +22,7 @@ DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
 DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
 AWS_CLI_FEATURE_REF="${AWS_CLI_FEATURE_REF:-}"
+CLAUDE_CODE_FEATURE_REF="${CLAUDE_CODE_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
 MODE=""
 SKIP_DIND=false
@@ -219,6 +220,13 @@ override_feature_refs() {
       refs_to_apply="aws-cli:${AWS_CLI_FEATURE_REF}"
     fi
   fi
+  if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+    if [[ -n "$refs_to_apply" ]]; then
+      refs_to_apply="${refs_to_apply},claude-code:${CLAUDE_CODE_FEATURE_REF}"
+    else
+      refs_to_apply="claude-code:${CLAUDE_CODE_FEATURE_REF}"
+    fi
+  fi
 
   if [[ -z "$refs_to_apply" ]]; then
     return 0
@@ -301,6 +309,9 @@ apply_mode_presets() {
       if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
         AWS_CLI_FEATURE_REF="./features/aws-cli"
       fi
+      if [[ -z "$CLAUDE_CODE_FEATURE_REF" ]]; then
+        CLAUDE_CODE_FEATURE_REF="./features/claude-code"
+      fi
       ;;
     ci-unpinned)
       # Use template defaults (published tag) unless caller overrides
@@ -316,6 +327,10 @@ apply_mode_presets() {
       fi
       if [[ -n "$AWS_CLI_FEATURE_REF" && ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
         echo "Error: MODE ci-pinned requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
+      if [[ -n "$CLAUDE_CODE_FEATURE_REF" && ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE ci-pinned requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
         exit 1
       fi
       ;;
@@ -338,6 +353,16 @@ apply_mode_presets() {
           exit 1
         fi
         if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
+          echo "Error: MODE release does not allow local feature references" >&2
+          exit 1
+        fi
+      fi
+      if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+        if [[ ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
+          echo "Error: MODE release requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+          exit 1
+        fi
+        if is_local_dind_ref "$CLAUDE_CODE_FEATURE_REF"; then
           echo "Error: MODE release does not allow local feature references" >&2
           exit 1
         fi
@@ -540,6 +565,9 @@ fi
 if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
   KEEP_VENDORED_FEATURES=true
 fi
+if is_local_dind_ref "$CLAUDE_CODE_FEATURE_REF"; then
+  KEEP_VENDORED_FEATURES=true
+fi
 
 echo
 echo "Dotfiles Dev Container Template Applier"
@@ -577,6 +605,9 @@ elif [[ -n "$DIND_FEATURE_REF" ]]; then
 fi
 if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
   echo "  AWS CLI feature ref: $AWS_CLI_FEATURE_REF"
+fi
+if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+  echo "  Claude Code feature ref: $CLAUDE_CODE_FEATURE_REF"
 fi
 if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
   echo "  Feature source: local (vendored features will be kept)"
