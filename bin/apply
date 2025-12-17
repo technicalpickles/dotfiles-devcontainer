@@ -742,6 +742,23 @@ PY
   sed -i.bak "s|\${templateOption:userShell}|$USER_SHELL|g" .devcontainer/Dockerfile
   rm .devcontainer/Dockerfile.bak
 
+  # In local-dev mode, use :local tag instead of pinned digest for base image
+  if [[ "$MODE" == "local-dev" ]]; then
+    BASE_IMAGE_REPO="ghcr.io/technicalpickles/dotfiles-devcontainer/base"
+    LOCAL_TAG="${BASE_IMAGE_REPO}:local"
+    # Rewrite FROM line to use :local tag
+    sed -i.bak "s|^FROM ${BASE_IMAGE_REPO}@sha256:[a-f0-9]*|FROM ${LOCAL_TAG}|" .devcontainer/Dockerfile
+    rm .devcontainer/Dockerfile.bak
+    # Check if local image exists
+    if ! docker image inspect "${LOCAL_TAG}" >/dev/null 2>&1; then
+      echo "⚠️  Base image not found locally: ${LOCAL_TAG}"
+      echo "   Run: bin/build-base --tag ${LOCAL_TAG}"
+      echo "   Then retry opening the devcontainer."
+    else
+      echo "✓ Using local base image: ${LOCAL_TAG}"
+    fi
+  fi
+
   # Replace placeholders in post-create.sh
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/post-create.sh
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/post-create.sh
