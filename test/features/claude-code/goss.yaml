@@ -1,0 +1,17 @@
+# Goss tests for claude-code feature
+# Verifies Claude Code CLI is installed and operational
+
+file:
+  /home/vscode/.local/bin/claude:
+    exists: true
+    mode: "0755"
+    filetype: file
+    owner: vscode
+
+command:
+  claude-installed:
+    exec: "command -v claude"
+    exit-status: 0
+  claude-version:
+    exec: "claude --version"
+    exit-status: 0
