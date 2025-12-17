@@ -225,26 +225,46 @@ if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
   fi
 fi
 
-# Vendor local DinD feature and rewrite features to avoid GHCR fetch when unpublished
-LOCAL_DIND_SRC="${REPO_ROOT}/src/dotfiles/.devcontainer/features/dind"
-LOCAL_DIND_DEST="${BUILD_DIR}/.devcontainer/features/dind"
-if [[ -d "${LOCAL_DIND_SRC}" ]]; then
-  mkdir -p "$(dirname "${LOCAL_DIND_DEST}")"
-  rm -rf "${LOCAL_DIND_DEST}"
-  cp -R "${LOCAL_DIND_SRC}" "${LOCAL_DIND_DEST}"
-  python3 - "${BUILD_DIR}/.devcontainer/devcontainer.json" <<'PY'
+# Vendor local features and rewrite devcontainer.json to avoid GHCR fetch when unpublished
+LOCAL_FEATURES_SRC="${REPO_ROOT}/src/dotfiles/.devcontainer/features"
+
+# Copy all local features
+for feature_src in "${LOCAL_FEATURES_SRC}"/*; do
+  if [[ -d "${feature_src}" ]]; then
+    feature_name="$(basename "${feature_src}")"
+    feature_dest="${BUILD_DIR}/.devcontainer/features/${feature_name}"
+    mkdir -p "$(dirname "${feature_dest}")"
+    rm -rf "${feature_dest}"
+    cp -R "${feature_src}" "${feature_dest}"
+  fi
+done
+
+# Rewrite devcontainer.json to use vendored features
+python3 - "${BUILD_DIR}/.devcontainer/devcontainer.json" <<'PY'
 import json, re, sys, pathlib
 path = pathlib.Path(sys.argv[1])
 raw = path.read_text()
 clean = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
 obj = json.loads(clean)
 features = obj.get("features", {})
-ref = "ghcr.io/technicalpickles/devcontainer-features/dind:0.1.1"
-if ref in features:
-    obj["features"] = {"./features/dind": {}}
-    path.write_text(json.dumps(obj, indent=2) + "\n")
+
+# Replace all GHCR feature refs with local vendored paths
+new_features = {}
+for ref, opts in features.items():
+    if ref.startswith("ghcr.io/technicalpickles/devcontainer-features/"):
+        # Extract feature name from ref (e.g., "dind" from "ghcr.io/.../dind:0.1.1")
+        feature_name = ref.split("/")[-1].split(":")[0].split("@")[0]
+        new_features[f"./features/{feature_name}"] = opts
+    else:
+        new_features[ref] = opts
+
+# Always add claude-code for testing (not in template devcontainer.json yet)
+if "./features/claude-code" not in new_features:
+    new_features["./features/claude-code"] = {}
+
+obj["features"] = new_features
+path.write_text(json.dumps(obj, indent=2) + "\n")
 PY
-fi
 
 # Ensure DOTPICKLES_ROLE is set (default noop) inside the smoke-test container
 if [[ "${TEMPLATE_ID}" == "dotfiles" ]]; then
