@@ -46,5 +46,21 @@ su - vscode -c "curl -fsSL '$DOWNLOAD_URL' -o '$BINARY_PATH' && chmod 755 '$BINA
 # Create symlink
 su - vscode -c "ln -sf '$BINARY_PATH' '$INSTALL_DIR/claude'"
 
+# Pre-seed minimal settings to skip interactive first-run setup.
+# Without this, any claude command (e.g., 'claude plugin list') triggers
+# the interactive configuration wizard, blocking automated scripts.
+# Users can still customize settings later via 'claude settings' or their dotfiles.
+CLAUDE_CONFIG_DIR="/home/vscode/.claude"
+SETTINGS_FILE="$CLAUDE_CONFIG_DIR/settings.json"
+su - vscode -c "mkdir -p '$CLAUDE_CONFIG_DIR'"
+if [[ ! -f $SETTINGS_FILE ]]; then
+	su - vscode -c "cat > '$SETTINGS_FILE'" <<'EOF'
+{
+  "hasCompletedOnboarding": true
+}
+EOF
+	echo "Pre-seeded minimal settings to skip interactive setup."
+fi
+
 echo "Claude Code CLI v${VERSION} installed successfully."
-echo "Note: Run 'claude' to complete initial setup and authenticate."
+echo "Note: Run 'claude' to configure authentication and preferences."
