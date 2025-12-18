@@ -1,0 +1,17 @@
+# Goss tests for claude-code feature
+# Verifies Claude Code CLI is installed and operational
+
+file:
+  # The installer creates a symlink in ~/.local/bin pointing to the versioned binary
+  /home/vscode/.local/bin/claude:
+    exists: true
+    filetype: symlink
+    owner: vscode
+
+command:
+  # Use full path since ~/.local/bin may not be in PATH during goss execution
+  claude-version:
+    exec: "/home/vscode/.local/bin/claude --version"
+    exit-status: 0
+    stdout:
+      - "/Claude Code/"

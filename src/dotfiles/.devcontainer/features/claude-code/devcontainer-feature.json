@@ -1,0 +1,8 @@
+{
+  "id": "claude-code",
+  "version": "0.1.0",
+  "name": "Claude Code CLI",
+  "description": "Installs Claude Code CLI (GHCR: ghcr.io/technicalpickles/devcontainer-features/claude-code)",
+  "documentationURL": "https://github.com/technicalpickles/dotfiles-devcontainer",
+  "options": {}
+}
