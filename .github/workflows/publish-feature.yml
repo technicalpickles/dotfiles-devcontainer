@@ -46,8 +46,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install devcontainer CLI and bats
-        run: npm install -g @devcontainers/cli bats
+      - name: Install devcontainer CLI, bats, and ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          npm install -g @devcontainers/cli bats
 
       - name: Pull pinned base image
         run: docker pull "${BASE_IMAGE}"
