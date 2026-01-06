@@ -1,4 +1,4 @@
-FROM ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b
+FROM ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
 
 ARG DOTFILES_REPO=${templateOption:dotfilesRepo}
 ARG DOTFILES_BRANCH=${templateOption:dotfilesBranch}

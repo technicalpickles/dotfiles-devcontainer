@@ -221,7 +221,8 @@ if (dockerBuildArg !== 'true') {
 NODE
   [ "$status" -eq 0 ]
 
-  run rg -n "ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:" "$WORKDIR/.devcontainer/Dockerfile"
+  # Base image can be pinned by SHA256 or use :latest tag
+  run rg -n "ghcr.io/technicalpickles/dotfiles-devcontainer/base(:|@sha256:)" "$WORKDIR/.devcontainer/Dockerfile"
   [ "$status" -eq 0 ]
 }
 

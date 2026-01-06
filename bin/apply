@@ -302,6 +302,15 @@ apply_mode_presets() {
         AWS_CLI_FEATURE_REF="./features/aws-cli"
       fi
       ;;
+    latest)
+      # Use :latest tags for all features (requires features to be published with latest tag)
+      if [[ -z "$DIND_FEATURE_REF" ]]; then
+        DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind:latest"
+      fi
+      if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
+        AWS_CLI_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/aws-cli:latest"
+      fi
+      ;;
     ci-unpinned)
       # Use template defaults (published tag) unless caller overrides
       ;;
@@ -363,10 +372,11 @@ repository or from elsewhere (e.g., curl | bash) and adjusts its behavior:
   - From elsewhere: Uses published template from GHCR
 
 ARGUMENTS:
-  MODE               Required. Preset for how to consume the DinD feature:
-                       - local-dev   : use vendored DinD feature (./features/dind) for unpublished local work
+  MODE               Required. Preset for how to consume features:
+                       - local-dev   : use vendored features (./features/*) for unpublished local work
+                       - latest      : use :latest tags for all features from GHCR
                        - ci-unpinned : use the template's published feature tag (default behavior before modes)
-                       - ci-pinned   : require a pinned digest via DIND_FEATURE_REF
+                       - ci-pinned   : require a pinned digest via DIND_FEATURE_REF/AWS_CLI_FEATURE_REF
                        - release     : require a pinned digest; disallow local refs
   TARGET_DIR         Target directory to apply template to (default: current directory)
                      Use "." for current directory
@@ -393,10 +403,13 @@ ENVIRONMENT VARIABLES:
   AWS_CLI_FEATURE_REF  Pin aws-cli feature to specific digest (ghcr.io/.../aws-cli@sha256:<digest>)
 
 EXAMPLES:
-  # Local development against vendored DinD feature (unpublished)
+  # Local development against vendored features (unpublished)
   bin/apply local-dev ~/projects/my-app
 
-  # CI using latest published feature tag (previous default)
+  # Use latest published features (always gets newest version)
+  bin/apply latest ~/projects/my-app
+
+  # CI using template's hardcoded feature tags (previous default)
   bin/apply ci-unpinned ~/projects/my-app
 
   # CI/release with a pinned digest (required for release mode)

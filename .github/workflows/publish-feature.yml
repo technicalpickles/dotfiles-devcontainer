@@ -47,7 +47,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install devcontainer CLI and bats
-        run: npm install -g @devcontainers/cli bats-core
+        run: npm install -g @devcontainers/cli bats
 
       - name: Pull pinned base image
         run: docker pull "${BASE_IMAGE}"
