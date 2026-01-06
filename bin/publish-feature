@@ -154,9 +154,11 @@ if [[ "$DRY_RUN" == "true" ]]; then
   PUBLISH_CMD+=("--dry-run")
 fi
 
-set -x
-"${PUBLISH_CMD[@]}"
-set +x
+echo "Running: ${PUBLISH_CMD[*]}"
+"${PUBLISH_CMD[@]}" 2>&1 || {
+  echo "Feature publish command failed with exit code $?"
+  exit 1
+}
 
 DIGEST="(dry-run)"
 if [[ "$DRY_RUN" != "true" ]]; then
