@@ -149,7 +149,7 @@ else
   echo "Skipping feature validation (--skip-tests)"
 fi
 
-PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE" --version "$VERSION")
+PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE" --version "$VERSION" --log-level debug)
 if [[ "$DRY_RUN" == "true" ]]; then
   PUBLISH_CMD+=("--dry-run")
 fi
