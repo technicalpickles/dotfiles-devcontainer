@@ -160,7 +160,15 @@ set +x
 
 DIGEST="(dry-run)"
 if [[ "$DRY_RUN" != "true" ]]; then
-  DIGEST="$(docker buildx imagetools inspect "$REF" | awk '/^Digest: / {print $2; exit}')"
+  # Retry a few times as registry may have propagation delay
+  for attempt in 1 2 3 4 5; do
+    DIGEST="$(docker buildx imagetools inspect "$REF" 2>/dev/null | awk '/^Digest: / {print $2; exit}')"
+    if [[ -n "$DIGEST" ]]; then
+      break
+    fi
+    echo "Waiting for registry to propagate (attempt $attempt/5)..."
+    sleep 5
+  done
   if [[ -z "$DIGEST" ]]; then
     echo "Unable to resolve digest for ${REF}" >&2
     exit 1
