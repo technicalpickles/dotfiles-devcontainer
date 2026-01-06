@@ -149,19 +149,21 @@ else
   echo "Skipping feature validation (--skip-tests)"
 fi
 
-PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE" --version "$VERSION" --log-level debug)
+# Note: devcontainer features publish uses version from devcontainer-feature.json, not a CLI flag
+# Note: devcontainer CLI doesn't support --dry-run for publish, so dry-run just skips the publish step
+PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE")
 if [[ "$DRY_RUN" == "true" ]]; then
-  PUBLISH_CMD+=("--dry-run")
-fi
+  # devcontainer CLI doesn't support --dry-run for publish, so we just skip the publish step
+  echo "Dry-run mode: skipping actual publish"
+  echo "Would run: ${PUBLISH_CMD[*]}"
+  DIGEST="(dry-run)"
+else
+  echo "Running: ${PUBLISH_CMD[*]}"
+  "${PUBLISH_CMD[@]}" 2>&1 || {
+    echo "Feature publish command failed with exit code $?"
+    exit 1
+  }
 
-echo "Running: ${PUBLISH_CMD[*]}"
-"${PUBLISH_CMD[@]}" 2>&1 || {
-  echo "Feature publish command failed with exit code $?"
-  exit 1
-}
-
-DIGEST="(dry-run)"
-if [[ "$DRY_RUN" != "true" ]]; then
   # Retry a few times as registry may have propagation delay
   for attempt in 1 2 3 4 5; do
     DIGEST="$(docker buildx imagetools inspect "$REF" 2>/dev/null | awk '/^Digest: / {print $2; exit}')"
