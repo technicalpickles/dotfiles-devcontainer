@@ -18,7 +18,7 @@ on:
         default: false
 
 env:
-  BASE_IMAGE: ghcr.io/technicalpickles/dotfiles-devcontainer/base@sha256:3195dd842e35bc1318b06c86c849e464b23fbc2082fc5de64f4b7bcaa789a63b
+  BASE_IMAGE: ghcr.io/technicalpickles/dotfiles-devcontainer/base:latest
   FEATURE_NAMESPACE: technicalpickles/devcontainer-features
 
 permissions:
