@@ -22,6 +22,7 @@ DOTFILES_REPO_EXPLICIT=false
 DOTFILES_REPO_WAS_FLAG=false
 DIND_FEATURE_REF="${DIND_FEATURE_REF:-}"
 AWS_CLI_FEATURE_REF="${AWS_CLI_FEATURE_REF:-}"
+CLAUDE_CODE_FEATURE_REF="${CLAUDE_CODE_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
 MODE=""
 SKIP_DIND=false
@@ -219,6 +220,13 @@ override_feature_refs() {
       refs_to_apply="aws-cli:${AWS_CLI_FEATURE_REF}"
     fi
   fi
+  if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+    if [[ -n "$refs_to_apply" ]]; then
+      refs_to_apply="${refs_to_apply},claude-code:${CLAUDE_CODE_FEATURE_REF}"
+    else
+      refs_to_apply="claude-code:${CLAUDE_CODE_FEATURE_REF}"
+    fi
+  fi
 
   if [[ -z "$refs_to_apply" ]]; then
     return 0
@@ -301,6 +309,9 @@ apply_mode_presets() {
       if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
         AWS_CLI_FEATURE_REF="./features/aws-cli"
       fi
+      if [[ -z "$CLAUDE_CODE_FEATURE_REF" ]]; then
+        CLAUDE_CODE_FEATURE_REF="./features/claude-code"
+      fi
       ;;
     latest)
       # Use :latest tags for all features (requires features to be published with latest tag)
@@ -327,6 +338,10 @@ apply_mode_presets() {
         echo "Error: MODE ci-pinned requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
         exit 1
       fi
+      if [[ -n "$CLAUDE_CODE_FEATURE_REF" && ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE ci-pinned requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
+      fi
       ;;
     release)
       if [[ -z "$DIND_FEATURE_REF" ]]; then
@@ -347,6 +362,16 @@ apply_mode_presets() {
           exit 1
         fi
         if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
+          echo "Error: MODE release does not allow local feature references" >&2
+          exit 1
+        fi
+      fi
+      if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+        if [[ ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
+          echo "Error: MODE release requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+          exit 1
+        fi
+        if is_local_dind_ref "$CLAUDE_CODE_FEATURE_REF"; then
           echo "Error: MODE release does not allow local feature references" >&2
           exit 1
         fi
@@ -553,6 +578,9 @@ fi
 if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
   KEEP_VENDORED_FEATURES=true
 fi
+if is_local_dind_ref "$CLAUDE_CODE_FEATURE_REF"; then
+  KEEP_VENDORED_FEATURES=true
+fi
 
 echo
 echo "Dotfiles Dev Container Template Applier"
@@ -590,6 +618,9 @@ elif [[ -n "$DIND_FEATURE_REF" ]]; then
 fi
 if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
   echo "  AWS CLI feature ref: $AWS_CLI_FEATURE_REF"
+fi
+if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+  echo "  Claude Code feature ref: $CLAUDE_CODE_FEATURE_REF"
 fi
 if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
   echo "  Feature source: local (vendored features will be kept)"
@@ -754,6 +785,23 @@ PY
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/Dockerfile
   sed -i.bak "s|\${templateOption:userShell}|$USER_SHELL|g" .devcontainer/Dockerfile
   rm .devcontainer/Dockerfile.bak
+
+  # In local-dev mode, use :local tag instead of pinned digest for base image
+  if [[ "$MODE" == "local-dev" ]]; then
+    BASE_IMAGE_REPO="ghcr.io/technicalpickles/dotfiles-devcontainer/base"
+    LOCAL_TAG="${BASE_IMAGE_REPO}:local"
+    # Rewrite FROM line to use :local tag
+    sed -i.bak "s|^FROM ${BASE_IMAGE_REPO}@sha256:[a-f0-9]*|FROM ${LOCAL_TAG}|" .devcontainer/Dockerfile
+    rm .devcontainer/Dockerfile.bak
+    # Check if local image exists
+    if ! docker image inspect "${LOCAL_TAG}" >/dev/null 2>&1; then
+      echo "⚠️  Base image not found locally: ${LOCAL_TAG}"
+      echo "   Run: bin/build-base --tag ${LOCAL_TAG}"
+      echo "   Then retry opening the devcontainer."
+    else
+      echo "✓ Using local base image: ${LOCAL_TAG}"
+    fi
+  fi
 
   # Replace placeholders in post-create.sh
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/post-create.sh

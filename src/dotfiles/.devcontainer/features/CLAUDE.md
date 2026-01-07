@@ -22,6 +22,12 @@ Source for published devcontainer features.
 - Registry: `ghcr.io/technicalpickles/devcontainer-features/aws-cli`
 - Mounts host `~/.aws` read-only
 
+### claude-code (Claude Code CLI)
+
+- Registry: `ghcr.io/technicalpickles/devcontainer-features/claude-code`
+- Installs Claude Code CLI via official installer
+- User authenticates interactively on first use
+
 ## Feature Structure
 
 Each feature has:
