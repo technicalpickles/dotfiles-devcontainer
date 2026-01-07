@@ -4,10 +4,11 @@ This document tracks all published devcontainer features for this project.
 
 ## Published Features
 
-| Feature | Version | Digest                                                                    | Status         |
-| ------- | ------- | ------------------------------------------------------------------------- | -------------- |
-| dind    | 0.1.1   | `sha256:30eeba4b20d48247dde11bbab5b813a4b3748dc34014bebec46bf28e8b658020` | Published      |
-| aws-cli | 0.1.0   | _pending_                                                                 | In development |
+| Feature     | Version | Digest                                                                    | Status    |
+| ----------- | ------- | ------------------------------------------------------------------------- | --------- |
+| dind        | 0.1.1   | `sha256:30eeba4b20d48247dde11bbab5b813a4b3748dc34014bebec46bf28e8b658020` | Published |
+| aws-cli     | 0.1.0   | _pending_                                                                 | Published |
+| claude-code | 0.1.0   | `sha256:a261c312c183d6537accd61646fcb1c2c9d6d32ab9869e516385ab5431bf5d1b` | Published |
 
 ## Feature Details
 
@@ -42,6 +43,22 @@ bin/publish-feature dind
 
 ```bash
 bin/publish-feature aws-cli
+```
+
+### claude-code (Claude Code CLI)
+
+**Registry:** `ghcr.io/technicalpickles/devcontainer-features/claude-code`
+
+**Purpose:** Installs Claude Code CLI via the official installer. Users authenticate interactively on first use.
+
+**Requirements:**
+
+- None (downloads from claude.ai)
+
+**Publish:**
+
+```bash
+bin/publish-feature claude-code
 ```
 
 ## Publishing Workflow
