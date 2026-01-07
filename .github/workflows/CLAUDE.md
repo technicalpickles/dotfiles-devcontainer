@@ -25,9 +25,9 @@ Multi-architecture base image build and publish:
 - Tests each with Goss before promotion
 - Publishes to GHCR with candidate → release promotion
 
-### feature-publish.yaml / publish-feature.yml
+### publish-feature.yml
 
-Manual workflow to publish individual features to GHCR.
+Manual workflow to publish individual features to GHCR. Accepts `feature` input (e.g., `dind`, `aws-cli`, `claude-code`) with optional `version` override and `dry-run` mode.
 
 ### bats-tests.yaml
 
