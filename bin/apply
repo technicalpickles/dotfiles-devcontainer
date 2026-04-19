@@ -27,6 +27,7 @@ CLAUDE_CODE_FEATURE_REF="${CLAUDE_CODE_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
 MODE=""
 SKIP_DIND=false
+INSTALL_ARGS=()
 
 normalize_install_args_json() {
   python3 - "$1" <<'PY'
@@ -51,6 +52,15 @@ import base64
 import sys
 
 print(base64.b64encode(sys.argv[1].encode()).decode())
+PY
+}
+
+install_args_json_from_array() {
+  python3 - "$@" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1:], separators=(",", ":")))
 PY
 }
 
@@ -436,6 +446,8 @@ ARGUMENTS:
 OPTIONS:
    --env KEY=VALUE    Environment variable to set before running dotfiles install.sh
                       Can be specified multiple times
+   --install-arg ARG  Argument token to pass to dotfiles install.sh
+                      Can be specified multiple times to build argv in order
    --repo URL         Dotfiles repository URL (default: auto-detected)
    --branch BRANCH    Dotfiles branch (default: main)
    --shell PATH       Login shell path for the vscode user (default: /usr/bin/fish)
@@ -476,6 +488,9 @@ EXAMPLES:
    # Custom dotfiles with env vars
    bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
 
+   # Pass unattended flags through to the dotfiles installer
+   bin/apply ci-unpinned --install-arg --yes .
+
    # Apply without Docker-in-Docker
    bin/apply ci-unpinned --no-dind /path/to/your/project
 
@@ -514,6 +529,10 @@ while [[ $# -gt 0 ]]; do
         echo "Error: --env requires KEY=VALUE format, got: $2" >&2
         exit 1
       fi
+      shift 2
+      ;;
+    --install-arg)
+      INSTALL_ARGS+=("$2")
       shift 2
       ;;
     --repo)
@@ -579,6 +598,10 @@ TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
 
 if [[ -z "$USER_SHELL_NAME" ]]; then
   USER_SHELL_NAME="$(basename "$USER_SHELL")"
+fi
+
+if [[ "${#INSTALL_ARGS[@]}" -gt 0 ]]; then
+  DOTFILES_INSTALL_ARGS_JSON="$(install_args_json_from_array "${INSTALL_ARGS[@]}")"
 fi
 
 DOTFILES_INSTALL_ARGS_JSON="$(normalize_install_args_json "$DOTFILES_INSTALL_ARGS_JSON")"

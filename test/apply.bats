@@ -15,7 +15,7 @@ teardown() {
 }
 
 run_apply() {
-  local name="$1" repo="$2" branch="$3" shell="$4" profile="$5" platform="${6:-}" install_args_json="${7:-}"
+  local name="$1" repo="$2" branch="$3" shell="$4" profile="$5" platform="${6:-}" install_args_json="${7:-}" install_args_source="${8:-cli}"
   WORKDIR="$(mktemp -d "/tmp/devcontainer-${name}-XXXX")"
 
   local env_args=(
@@ -30,7 +30,7 @@ run_apply() {
   if [[ -n "$platform" ]]; then
     env_args+=("PLATFORM_OVERRIDE=$platform")
   fi
-  if [[ -n "$install_args_json" ]]; then
+  if [[ -n "$install_args_json" && "$install_args_source" == "env" ]]; then
     env_args+=("DOTFILES_INSTALL_ARGS_JSON=$install_args_json")
   fi
 
@@ -39,7 +39,20 @@ run_apply() {
     platform_args+=(--platform "$platform")
   fi
 
-  run env "${env_args[@]}" bash -x "$APPLY" ci-unpinned --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "$WORKDIR"
+  local install_arg_flags=()
+  if [[ -n "$install_args_json" && "$install_args_source" == "cli" ]]; then
+    while IFS= read -r arg; do
+      install_arg_flags+=(--install-arg "$arg")
+    done < <(python3 - "$install_args_json" <<'PY'
+import json
+import sys
+for item in json.loads(sys.argv[1]):
+    print(item)
+PY
+    )
+  fi
+
+  run env "${env_args[@]}" bash -x "$APPLY" ci-unpinned --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "${install_arg_flags[@]}" "$WORKDIR"
   if [[ "$status" -ne 0 ]]; then
     echo "apply failed (name=$name):"
     echo "$output"
@@ -198,13 +211,23 @@ assert_common_state() {
   local repo_url="file://${repo_dir}"
   local install_args_json='["--mode","fast","--yes"]'
 
-  run_apply install-argv "$repo_url" "main" "/usr/bin/fish" "" "" "$install_args_json"
+  run_apply install-argv "$repo_url" "main" "/usr/bin/fish" "" "" "$install_args_json" "env"
   assert_common_state "$repo_url" "main" "/usr/bin/fish" "fish" "$install_args_json"
 
   run rg -F -- '--install-arg "${DOTFILES_INSTALL_ARG}"' "$WORKDIR/.devcontainer/Dockerfile"
   [ "$status" -ne 0 ]
   run rg -F -- '--install-args-b64 "${DOTFILES_INSTALL_ARGS_B64}"' "$WORKDIR/.devcontainer/Dockerfile"
   [ "$status" -eq 0 ]
+}
+
+@test "apply accepts repeated install-arg flags on the CLI" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+  local install_args_json='["--mode","fast","--yes"]'
+
+  run_apply install-argv-cli "$repo_url" "main" "/usr/bin/fish" "" "" "$install_args_json" "cli"
+  assert_common_state "$repo_url" "main" "/usr/bin/fish" "fish" "$install_args_json"
 }
 
 @test "dind feature references ghcr and is not vendored" {
