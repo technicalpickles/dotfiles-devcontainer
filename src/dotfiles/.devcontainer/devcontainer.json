@@ -7,6 +7,7 @@
     "args": {
       "DOTFILES_REPO": "${templateOption:dotfilesRepo}",
       "DOTFILES_BRANCH": "${templateOption:dotfilesBranch}",
+      "DOTFILES_INSTALL_ARGS_B64": "${templateOption:dotfilesInstallArgsB64}",
       "USER_SHELL": "${templateOption:userShell}",
       "DOCKER_BUILD": "true"
     }
