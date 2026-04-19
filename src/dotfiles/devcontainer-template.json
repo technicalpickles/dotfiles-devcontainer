@@ -15,6 +15,11 @@
       "description": "Dotfiles repository branch",
       "default": "main"
     },
+    "dotfilesInstallArgsB64": {
+      "type": "string",
+      "description": "Base64-encoded JSON array of argv tokens passed to install.sh during automated dotfiles setup",
+      "default": ""
+    },
     "userShell": {
       "type": "string",
       "description": "Login shell path for the vscode user",

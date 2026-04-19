@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: setup-dotfiles --repo <url> --branch <name> [--dest /path/to/dir] [--env KEY=VALUE ...]
+Usage: setup-dotfiles --repo <url> --branch <name> [--dest /path/to/dir] [--env KEY=VALUE ...] [--install-arg ARG ...] [--install-args-json JSON] [--install-args-b64 B64]
 
 Clone (or refresh) a dotfiles repo and run its install.sh.
 Runs as the invoking user; does not change the default shell.
@@ -14,6 +14,31 @@ DEST="/home/vscode/.dotfiles"
 REPO=""
 BRANCH=""
 ENV_VARS=()
+INSTALL_ARGS=()
+
+append_install_args_json() {
+  local install_args_json="$1"
+  while IFS= read -r -d '' arg; do
+    INSTALL_ARGS+=("$arg")
+  done < <(
+    python3 - "$install_args_json" <<'PY'
+import json
+import sys
+
+try:
+    value = json.loads(sys.argv[1])
+except json.JSONDecodeError as exc:
+    raise SystemExit(f"Error: --install-args-json must be valid JSON: {exc}")
+
+if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+    raise SystemExit("Error: --install-args-json must be a JSON array of strings")
+
+for item in value:
+    sys.stdout.buffer.write(item.encode("utf-8"))
+    sys.stdout.buffer.write(b"\0")
+PY
+  )
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -31,6 +56,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --env)
       ENV_VARS+=("$2")
+      shift 2
+      ;;
+    --install-arg)
+      INSTALL_ARGS+=("$2")
+      shift 2
+      ;;
+    --install-args-json)
+      append_install_args_json "$2"
+      shift 2
+      ;;
+    --install-args-b64)
+      append_install_args_json "$(python3 -c 'import base64, sys; print(base64.b64decode(sys.argv[1]).decode())' "$2")"
       shift 2
       ;;
     -h|--help)
@@ -73,5 +110,8 @@ if [[ ! -x "${DEST}/install.sh" ]]; then
   exit 1
 fi
 
-# Run install from inside the repo so relative paths resolve
-run_with_env bash -c "cd \"${DEST}\" && ./install.sh"
+# Run install from inside the repo so relative paths resolve.
+(
+  cd "${DEST}"
+  run_with_env ./install.sh "${INSTALL_ARGS[@]}"
+)

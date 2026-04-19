@@ -15,7 +15,7 @@ teardown() {
 }
 
 run_apply() {
-  local name="$1" repo="$2" branch="$3" shell="$4" profile="$5" platform="${6:-}"
+  local name="$1" repo="$2" branch="$3" shell="$4" profile="$5" platform="${6:-}" install_args_json="${7:-}" install_args_source="${8:-cli}"
   WORKDIR="$(mktemp -d "/tmp/devcontainer-${name}-XXXX")"
 
   local env_args=(
@@ -30,13 +30,29 @@ run_apply() {
   if [[ -n "$platform" ]]; then
     env_args+=("PLATFORM_OVERRIDE=$platform")
   fi
+  if [[ -n "$install_args_json" && "$install_args_source" == "env" ]]; then
+    env_args+=("DOTFILES_INSTALL_ARGS_JSON=$install_args_json")
+  fi
 
   local platform_args=()
   if [[ -n "$platform" ]]; then
     platform_args+=(--platform "$platform")
   fi
 
-  run env "${env_args[@]}" bash -x "$APPLY" ci-unpinned --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "$WORKDIR"
+  local install_arg_flags=()
+  if [[ -n "$install_args_json" && "$install_args_source" == "cli" ]]; then
+    while IFS= read -r arg; do
+      install_arg_flags+=(--install-arg "$arg")
+    done < <(python3 - "$install_args_json" <<'PY'
+import json
+import sys
+for item in json.loads(sys.argv[1]):
+    print(item)
+PY
+    )
+  fi
+
+  run env "${env_args[@]}" bash -x "$APPLY" ci-unpinned --repo "$repo" --branch "$branch" --shell "$shell" "${platform_args[@]}" "${install_arg_flags[@]}" "$WORKDIR"
   if [[ "$status" -ne 0 ]]; then
     echo "apply failed (name=$name):"
     echo "$output"
@@ -92,7 +108,9 @@ NODE
 }
 
 assert_common_state() {
-  local repo="$1" branch="$2" shell="$3" profile="$4"
+  local repo="$1" branch="$2" shell="$3" profile="$4" install_args_json="${5:-[]}"
+  local install_args_b64
+  install_args_b64="$(python3 -c 'import base64, sys; print(base64.b64encode(sys.argv[1].encode()).decode())' "$install_args_json")"
 
   # No unresolved template placeholders in files we rewrite
   run rg -F '${templateOption' "$WORKDIR/.devcontainer/Dockerfile"
@@ -132,6 +150,12 @@ assert_common_state() {
     echo "shell mismatch: expected $shell got $shell_arg"
     return 1
   fi
+  local install_args_arg
+  install_args_arg="$(json_get "$dc_json" 'build.args.DOTFILES_INSTALL_ARGS_B64')"
+  if [[ "$install_args_arg" != "$install_args_b64" ]]; then
+    echo "install args mismatch: expected $install_args_b64 got $install_args_arg"
+    return 1
+  fi
   local profile_arg
   profile_arg="$(json_get "$dc_json" 'customizations.vscode.settings.terminal\.integrated\.defaultProfile\.linux')"
   if [[ "$profile_arg" != "$profile" ]]; then
@@ -158,6 +182,12 @@ assert_common_state() {
     echo "$output"
     return 1
   fi
+  run rg -F "$install_args_b64" "$WORKDIR/.devcontainer/post-create.sh"
+  if [[ "$status" -ne 0 ]]; then
+    echo "install args not found in post-create.sh"
+    echo "$output"
+    return 1
+  fi
   run rg -F "devcontainer-post-create" "$WORKDIR/.devcontainer/post-create.sh"
   if [[ "$status" -ne 0 ]]; then
     echo "base entrypoint delegation missing in post-create.sh"
@@ -173,6 +203,31 @@ assert_common_state() {
 
   run_apply default "$repo_url" "main" "/usr/bin/fish" ""
   assert_common_state "$repo_url" "main" "/usr/bin/fish" "fish"
+}
+
+@test "apply preserves arbitrary dotfiles install argv as JSON" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+  local install_args_json='["--mode","fast","--yes"]'
+
+  run_apply install-argv "$repo_url" "main" "/usr/bin/fish" "" "" "$install_args_json" "env"
+  assert_common_state "$repo_url" "main" "/usr/bin/fish" "fish" "$install_args_json"
+
+  run rg -F -- '--install-arg "${DOTFILES_INSTALL_ARG}"' "$WORKDIR/.devcontainer/Dockerfile"
+  [ "$status" -ne 0 ]
+  run rg -F -- '--install-args-b64 "${DOTFILES_INSTALL_ARGS_B64}"' "$WORKDIR/.devcontainer/Dockerfile"
+  [ "$status" -eq 0 ]
+}
+
+@test "apply accepts repeated install-arg flags on the CLI" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+  local install_args_json='["--mode","fast","--yes"]'
+
+  run_apply install-argv-cli "$repo_url" "main" "/usr/bin/fish" "" "" "$install_args_json" "cli"
+  assert_common_state "$repo_url" "main" "/usr/bin/fish" "fish" "$install_args_json"
 }
 
 @test "dind feature references ghcr and is not vendored" {

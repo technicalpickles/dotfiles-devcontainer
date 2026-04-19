@@ -11,6 +11,7 @@ TEMPLATE_ID="ghcr.io/technicalpickles/dotfiles-devcontainer/dotfiles:latest"
 INSTALL_ENV_VARS="${INSTALL_ENV_VARS:-}"
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/technicalpickles/dotfiles.git}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
+DOTFILES_INSTALL_ARGS_JSON="${DOTFILES_INSTALL_ARGS_JSON:-[]}"
 USER_SHELL="${USER_SHELL:-/usr/bin/fish}"
 USER_SHELL_NAME="${USER_SHELL_NAME:-}"
 PLATFORM_OVERRIDE="${PLATFORM_OVERRIDE:-}"
@@ -26,6 +27,42 @@ CLAUDE_CODE_FEATURE_REF="${CLAUDE_CODE_FEATURE_REF:-}"
 KEEP_VENDORED_FEATURES=false
 MODE=""
 SKIP_DIND=false
+INSTALL_ARGS=()
+
+normalize_install_args_json() {
+  python3 - "$1" <<'PY'
+import json
+import sys
+
+try:
+    value = json.loads(sys.argv[1])
+except json.JSONDecodeError as exc:
+    raise SystemExit(f"DOTFILES_INSTALL_ARGS_JSON must be valid JSON: {exc}")
+
+if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+    raise SystemExit("DOTFILES_INSTALL_ARGS_JSON must be a JSON array of strings")
+
+print(json.dumps(value, separators=(",", ":")))
+PY
+}
+
+encode_install_args_b64() {
+  python3 - "$1" <<'PY'
+import base64
+import sys
+
+print(base64.b64encode(sys.argv[1].encode()).decode())
+PY
+}
+
+install_args_json_from_array() {
+  python3 - "$@" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1:], separators=(",", ":")))
+PY
+}
 
 # Normalize git URLs from SSH to HTTPS format
 normalize_git_url() {
@@ -409,6 +446,8 @@ ARGUMENTS:
 OPTIONS:
    --env KEY=VALUE    Environment variable to set before running dotfiles install.sh
                       Can be specified multiple times
+   --install-arg ARG  Argument token to pass to dotfiles install.sh
+                      Can be specified multiple times to build argv in order
    --repo URL         Dotfiles repository URL (default: auto-detected)
    --branch BRANCH    Dotfiles branch (default: main)
    --shell PATH       Login shell path for the vscode user (default: /usr/bin/fish)
@@ -421,6 +460,7 @@ ENVIRONMENT VARIABLES:
   INSTALL_ENV_VARS     Environment variables in KEY1=value1,KEY2=value2 format
   DOTFILES_REPO        Same as --repo
   DOTFILES_BRANCH      Same as --branch
+  DOTFILES_INSTALL_ARGS_JSON JSON array of argv tokens passed to dotfiles install.sh
   USER_SHELL           Same as --shell
   USER_SHELL_NAME      Override the terminal profile name (default: derived from USER_SHELL)
   PLATFORM_OVERRIDE    Same as --platform (forces platform flag in devcontainer build)
@@ -447,6 +487,9 @@ EXAMPLES:
 
    # Custom dotfiles with env vars
    bin/apply ci-unpinned --repo https://github.com/myuser/dotfiles.git --env DOTFILES_ROLE=devcontainer .
+
+   # Pass unattended flags through to the dotfiles installer
+   bin/apply ci-unpinned --install-arg --yes .
 
    # Apply without Docker-in-Docker
    bin/apply ci-unpinned --no-dind /path/to/your/project
@@ -486,6 +529,10 @@ while [[ $# -gt 0 ]]; do
         echo "Error: --env requires KEY=VALUE format, got: $2" >&2
         exit 1
       fi
+      shift 2
+      ;;
+    --install-arg)
+      INSTALL_ARGS+=("$2")
       shift 2
       ;;
     --repo)
@@ -553,6 +600,13 @@ if [[ -z "$USER_SHELL_NAME" ]]; then
   USER_SHELL_NAME="$(basename "$USER_SHELL")"
 fi
 
+if [[ "${#INSTALL_ARGS[@]}" -gt 0 ]]; then
+  DOTFILES_INSTALL_ARGS_JSON="$(install_args_json_from_array "${INSTALL_ARGS[@]}")"
+fi
+
+DOTFILES_INSTALL_ARGS_JSON="$(normalize_install_args_json "$DOTFILES_INSTALL_ARGS_JSON")"
+DOTFILES_INSTALL_ARGS_B64="$(encode_install_args_b64 "$DOTFILES_INSTALL_ARGS_JSON")"
+
 # Track if repo was explicitly set (for auto-detection)
 DOTFILES_REPO_EXPLICIT=false
 if [[ "$DOTFILES_REPO_WAS_FLAG" == "true" ]]; then
@@ -609,6 +663,7 @@ echo "  Mode: $MODE"
 echo "  Target directory: $TARGET_DIR"
 echo "  Dotfiles repo: $DOTFILES_REPO"
 echo "  Dotfiles branch: $DOTFILES_BRANCH"
+echo "  Dotfiles install argv: $DOTFILES_INSTALL_ARGS_JSON"
 echo "  User shell: $USER_SHELL (profile: $USER_SHELL_NAME)"
 echo "  Platform: ${PLATFORM_OVERRIDE:-auto-detect}"
 if [[ "$SKIP_DIND" == "true" ]]; then
@@ -723,7 +778,7 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
 
    # Replace placeholders in devcontainer.json
    # Use Python for JSON-aware replacement to handle containerEnv as object, not string
-   python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" "$SKIP_DIND" <<'PY'
+   python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" "$SKIP_DIND" "$DOTFILES_INSTALL_ARGS_B64" <<'PY'
 import json, sys, re
 path = sys.argv[1]
 dotfiles_repo = sys.argv[2]
@@ -732,6 +787,7 @@ user_shell = sys.argv[4]
 user_shell_name = sys.argv[5]
 container_env_json = sys.argv[6]
 skip_dind = sys.argv[7] == "true"
+dotfiles_install_args_b64 = sys.argv[8]
 
 with open(path, 'r', encoding='utf-8') as f:
     raw = f.read()
@@ -747,6 +803,8 @@ if 'build' in obj and 'args' in obj['build']:
         args['DOTFILES_REPO'] = dotfiles_repo
     if 'DOTFILES_BRANCH' in args:
         args['DOTFILES_BRANCH'] = dotfiles_branch
+    if 'DOTFILES_INSTALL_ARGS_B64' in args:
+        args['DOTFILES_INSTALL_ARGS_B64'] = dotfiles_install_args_b64
     if 'USER_SHELL' in args:
         args['USER_SHELL'] = user_shell
 
@@ -783,6 +841,7 @@ PY
   # Replace placeholders in Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/Dockerfile
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/Dockerfile
+  sed -i.bak "s|\${templateOption:dotfilesInstallArgsB64}|$DOTFILES_INSTALL_ARGS_B64|g" .devcontainer/Dockerfile
   sed -i.bak "s|\${templateOption:userShell}|$USER_SHELL|g" .devcontainer/Dockerfile
   rm .devcontainer/Dockerfile.bak
 
@@ -806,6 +865,7 @@ PY
   # Replace placeholders in post-create.sh
   sed -i.bak "s|\${templateOption:dotfilesRepo}|$DOTFILES_REPO|g" .devcontainer/post-create.sh
   sed -i.bak "s|\${templateOption:dotfilesBranch}|$DOTFILES_BRANCH|g" .devcontainer/post-create.sh
+  sed -i.bak "s|\${templateOption:dotfilesInstallArgsB64}|$DOTFILES_INSTALL_ARGS_B64|g" .devcontainer/post-create.sh
   rm .devcontainer/post-create.sh.bak
 
   if [[ "$KEEP_VENDORED_FEATURES" == "true" ]]; then
@@ -872,6 +932,7 @@ else
     --template-id "$TEMPLATE_ID" \
     --template-args dotfilesRepo="$DOTFILES_REPO" \
     --template-args dotfilesBranch="$DOTFILES_BRANCH" \
+    --template-args dotfilesInstallArgsB64="$DOTFILES_INSTALL_ARGS_B64" \
     --template-args userShell="$USER_SHELL" \
     --template-args userShellName="$USER_SHELL_NAME" \
     $ENV_ARGS

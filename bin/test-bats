@@ -11,4 +11,4 @@ if ! command -v bats >/dev/null; then
   exit 1
 fi
 
-exec bats test/apply.bats
+exec bats test/apply.bats test/setup-dotfiles.bats

@@ -63,11 +63,15 @@ sync_dotfiles() {
   require_dotfiles_inputs
 
   local extra_env=()
+  local install_args=()
   for var in SKIP_MISE SKIP_FISH SKIP_GH SKIP_AWS; do
     if [[ -n "${!var:-}" ]]; then
       extra_env+=(--env "${var}=${!var}")
     fi
   done
+  if [[ -n "${DOTFILES_INSTALL_ARGS_B64:-}" ]]; then
+    install_args+=(--install-args-b64 "${DOTFILES_INSTALL_ARGS_B64}")
+  fi
 
   if [[ "${#extra_env[@]}" -gt 0 ]]; then
     printf "Forwarding dotfiles env:"
@@ -78,7 +82,7 @@ sync_dotfiles() {
   fi
 
   echo "Syncing dotfiles (${DOTFILES_REPO}@${DOTFILES_BRANCH})..."
-  setup-dotfiles --repo "${DOTFILES_REPO}" --branch "${DOTFILES_BRANCH}" --env "DOCKER_BUILD=false" "${extra_env[@]}"
+  setup-dotfiles --repo "${DOTFILES_REPO}" --branch "${DOTFILES_BRANCH}" --env "DOCKER_BUILD=false" "${extra_env[@]}" "${install_args[@]}"
   echo "Dotfiles sync complete"
 }
 
