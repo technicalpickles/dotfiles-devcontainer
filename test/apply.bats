@@ -483,4 +483,11 @@ NODE
     echo "$output"
   fi
   [ "$status" -eq 0 ]
+
+  run rg -n '^FROM ghcr.io/technicalpickles/dotfiles-devcontainer/base:local$' "$WORKDIR/.devcontainer/Dockerfile"
+  if [[ "$status" -ne 0 ]]; then
+    echo "local-dev should rewrite Dockerfile base image to :local"
+    echo "$output"
+    return 1
+  fi
 }

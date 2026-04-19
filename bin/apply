@@ -849,8 +849,8 @@ PY
   if [[ "$MODE" == "local-dev" ]]; then
     BASE_IMAGE_REPO="ghcr.io/technicalpickles/dotfiles-devcontainer/base"
     LOCAL_TAG="${BASE_IMAGE_REPO}:local"
-    # Rewrite FROM line to use :local tag
-    sed -i.bak "s|^FROM ${BASE_IMAGE_REPO}@sha256:[a-f0-9]*|FROM ${LOCAL_TAG}|" .devcontainer/Dockerfile
+    # Rewrite the template base image reference to the local tag.
+    sed -E -i.bak "s|^FROM ${BASE_IMAGE_REPO}([:@][^[:space:]]+)?$|FROM ${LOCAL_TAG}|" .devcontainer/Dockerfile
     rm .devcontainer/Dockerfile.bak
     # Check if local image exists
     if ! docker image inspect "${LOCAL_TAG}" >/dev/null 2>&1; then
