@@ -868,15 +868,14 @@ updated = re.sub(
 )
 path.write_text(updated, encoding="utf-8")
 PY
-    # Check if local image exists
     if ! docker image inspect "${LOCAL_TAG}" >/dev/null 2>&1; then
       echo "⚠️  Base image not found locally: ${LOCAL_TAG}"
       echo "   Building it now..."
-      "${REPO_ROOT}/bin/build-base" --tag "${LOCAL_TAG}"
-      echo "✓ Using rebuilt local base image: ${LOCAL_TAG}"
     else
-      echo "✓ Using local base image: ${LOCAL_TAG}"
+      echo "🔄 Rebuilding local base image: ${LOCAL_TAG}"
     fi
+    "${REPO_ROOT}/bin/build-base" --tag "${LOCAL_TAG}"
+    echo "✓ Using rebuilt local base image: ${LOCAL_TAG}"
   fi
 
   # Replace placeholders in post-create.sh

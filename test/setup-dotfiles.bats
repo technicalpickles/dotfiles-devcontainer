@@ -137,3 +137,51 @@ EOF
   [ "$(cat "$home_dir/arg2")" = "fast" ]
   [ "$(cat "$home_dir/arg3")" = "--yes" ]
 }
+
+@test "setup-dotfiles trusts cloned mise.toml before running install.sh" {
+  local repo_dir="$TEST_TMPDIR/mise-dotfiles"
+  local home_dir="$TEST_TMPDIR/home-mise"
+  local bin_dir="$TEST_TMPDIR/bin"
+  local mise_log="$TEST_TMPDIR/mise.log"
+  mkdir -p "$repo_dir" "$home_dir" "$bin_dir"
+
+  cat >"$repo_dir/install.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+touch "${HOME}/.install-ran"
+EOF
+  cat >"$repo_dir/mise.toml" <<'EOF'
+[tools]
+node = "lts"
+EOF
+  chmod +x "$repo_dir/install.sh"
+
+  cat >"$bin_dir/mise" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "\$*" >>"$mise_log"
+EOF
+  chmod +x "$bin_dir/mise"
+
+  (
+    cd "$repo_dir" || exit 1
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git init -b main >/dev/null
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git config user.email "fixture@example.com"
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git config user.name "Fixture User"
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git add install.sh mise.toml >/dev/null
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git commit -m "fixture" >/dev/null
+  )
+
+  run env HOME="$home_dir" PATH="$bin_dir:/usr/bin:/bin" bash "$SETUP_DOTFILES" \
+    --repo "file://${repo_dir}" \
+    --branch main \
+    --install-arg --yes \
+    --dest "$TEST_TMPDIR/dotfiles-mise"
+
+  [ "$status" -eq 0 ]
+  [ -f "$home_dir/.install-ran" ]
+  run cat "$mise_log"
+  [ "$status" -eq 0 ]
+  [ "$output" = "trust --yes $TEST_TMPDIR/dotfiles-mise/mise.toml" ]
+}

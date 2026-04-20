@@ -97,6 +97,17 @@ run_with_env() {
   fi
 }
 
+trust_repo_mise() {
+  local config_file="${DEST}/mise.toml"
+  if [[ ! -f "$config_file" ]]; then
+    return 0
+  fi
+  if ! command -v mise >/dev/null 2>&1; then
+    return 0
+  fi
+  mise trust --yes "$config_file"
+}
+
 if [[ -d "${DEST}/.git" ]]; then
   git -C "${DEST}" fetch --all --prune
   git -C "${DEST}" checkout "${BRANCH}"
@@ -109,6 +120,8 @@ if [[ ! -x "${DEST}/install.sh" ]]; then
   echo "Error: install.sh not found or not executable in ${DEST}" >&2
   exit 1
 fi
+
+trust_repo_mise
 
 # Run install from inside the repo so relative paths resolve.
 (

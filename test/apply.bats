@@ -444,9 +444,28 @@ NODE
   local repo_dir
   repo_dir="$(create_dotfiles_fixture_repo)"
   local repo_url="file://${repo_dir}"
+  local stub_dir
+  local docker_log
 
   WORKDIR="$(mktemp -d "/tmp/devcontainer-local-dev-XXXX")"
-  run env DOTFILES_REPO="$repo_url" DOTFILES_BRANCH="main" USER_SHELL="/usr/bin/fish" \
+  stub_dir="$WORKDIR/stubs"
+  docker_log="$WORKDIR/docker.log"
+  mkdir -p "$stub_dir"
+  cat >"$stub_dir/docker" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "\$*" >>"$docker_log"
+if [[ "\$1" == "image" && "\$2" == "inspect" ]]; then
+  exit 0
+fi
+if [[ "\$1" == "build" ]]; then
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "$stub_dir/docker"
+
+  run env PATH="$stub_dir:$PATH" DOTFILES_REPO="$repo_url" DOTFILES_BRANCH="main" USER_SHELL="/usr/bin/fish" \
     bash -x "$APPLY" local-dev --repo "$repo_url" --branch "main" --shell "/usr/bin/fish" "$WORKDIR"
   if [[ "$status" -ne 0 ]]; then
     echo "apply failed:"
@@ -508,6 +527,43 @@ set -euo pipefail
 printf '%s\n' "\$*" >>"$docker_log"
 if [[ "\$1 \$2" == "image inspect" ]]; then
   exit 1
+fi
+if [[ "\$1" == "build" ]]; then
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "$stub_dir/docker"
+
+  run env PATH="$stub_dir:$PATH" DOTFILES_REPO="$repo_url" DOTFILES_BRANCH="main" USER_SHELL="/usr/bin/fish" \
+    bash -x "$APPLY" local-dev --repo "$repo_url" --branch "main" --shell "/usr/bin/fish" "$WORKDIR"
+  if [[ "$status" -ne 0 ]]; then
+    echo "apply failed:"
+    echo "$output"
+  fi
+  [ "$status" -eq 0 ]
+
+  run cat "$docker_log"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"image inspect ghcr.io/technicalpickles/dotfiles-devcontainer/base:local"* ]]
+  [[ "$output" == *"build --pull --secret id=github_token,env=GITHUB_TOKEN -f "* ]]
+}
+
+@test "local-dev mode rebuilds the local base image even when present" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+  WORKDIR="$(mktemp -d "/tmp/devcontainer-local-dev-rebuild-XXXX")"
+  local stub_dir="$WORKDIR/stubs"
+  local docker_log="$WORKDIR/docker.log"
+
+  mkdir -p "$stub_dir"
+  cat >"$stub_dir/docker" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "\$*" >>"$docker_log"
+if [[ "\$1" == "image" && "\$2" == "inspect" ]]; then
+  exit 0
 fi
 if [[ "\$1" == "build" ]]; then
   exit 0
