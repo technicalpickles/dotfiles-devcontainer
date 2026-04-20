@@ -849,14 +849,31 @@ PY
   if [[ "$MODE" == "local-dev" ]]; then
     BASE_IMAGE_REPO="ghcr.io/technicalpickles/dotfiles-devcontainer/base"
     LOCAL_TAG="${BASE_IMAGE_REPO}:local"
-    # Rewrite FROM line to use :local tag
-    sed -i.bak "s|^FROM ${BASE_IMAGE_REPO}@sha256:[a-f0-9]*|FROM ${LOCAL_TAG}|" .devcontainer/Dockerfile
-    rm .devcontainer/Dockerfile.bak
+    # Rewrite FROM line to use :local tag regardless of whether the template uses a tag or pinned digest.
+    python3 - .devcontainer/Dockerfile "$BASE_IMAGE_REPO" "$LOCAL_TAG" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+base_repo = re.escape(sys.argv[2])
+local_tag = sys.argv[3]
+contents = path.read_text(encoding="utf-8")
+updated = re.sub(
+    rf"^FROM {base_repo}(?:@sha256:[a-f0-9]+|:[^\s]+)?$",
+    f"FROM {local_tag}",
+    contents,
+    count=1,
+    flags=re.M,
+)
+path.write_text(updated, encoding="utf-8")
+PY
     # Check if local image exists
     if ! docker image inspect "${LOCAL_TAG}" >/dev/null 2>&1; then
       echo "⚠️  Base image not found locally: ${LOCAL_TAG}"
-      echo "   Run: bin/build-base --tag ${LOCAL_TAG}"
-      echo "   Then retry opening the devcontainer."
+      echo "   Building it now..."
+      "${REPO_ROOT}/bin/build-base" --tag "${LOCAL_TAG}"
+      echo "✓ Using rebuilt local base image: ${LOCAL_TAG}"
     else
       echo "✓ Using local base image: ${LOCAL_TAG}"
     fi

@@ -459,6 +459,14 @@ NODE
   [ -d "$WORKDIR/.devcontainer/features/aws-cli" ]
   [ -f "$WORKDIR/.devcontainer/features/aws-cli/devcontainer-feature.json" ]
 
+  run rg -n '^FROM ghcr\.io/technicalpickles/dotfiles-devcontainer/base:local$' "$WORKDIR/.devcontainer/Dockerfile"
+  if [[ "$status" -ne 0 ]]; then
+    echo "expected local-dev mode to rewrite base image to :local"
+    echo "$output"
+    sed -n '1,20p' "$WORKDIR/.devcontainer/Dockerfile"
+  fi
+  [ "$status" -eq 0 ]
+
   # Verify aws-cli feature references local path
   local dc_json="$WORKDIR/.devcontainer/devcontainer.json"
   run node - "$dc_json" <<'NODE'
@@ -483,4 +491,41 @@ NODE
     echo "$output"
   fi
   [ "$status" -eq 0 ]
+}
+
+@test "local-dev mode builds the local base image when missing" {
+  local repo_dir
+  repo_dir="$(create_dotfiles_fixture_repo)"
+  local repo_url="file://${repo_dir}"
+  WORKDIR="$(mktemp -d "/tmp/devcontainer-local-dev-build-XXXX")"
+  local stub_dir="$WORKDIR/stubs"
+  local docker_log="$WORKDIR/docker.log"
+
+  mkdir -p "$stub_dir"
+  cat >"$stub_dir/docker" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "\$*" >>"$docker_log"
+if [[ "\$1 \$2" == "image inspect" ]]; then
+  exit 1
+fi
+if [[ "\$1" == "build" ]]; then
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "$stub_dir/docker"
+
+  run env PATH="$stub_dir:$PATH" DOTFILES_REPO="$repo_url" DOTFILES_BRANCH="main" USER_SHELL="/usr/bin/fish" \
+    bash -x "$APPLY" local-dev --repo "$repo_url" --branch "main" --shell "/usr/bin/fish" "$WORKDIR"
+  if [[ "$status" -ne 0 ]]; then
+    echo "apply failed:"
+    echo "$output"
+  fi
+  [ "$status" -eq 0 ]
+
+  run cat "$docker_log"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"image inspect ghcr.io/technicalpickles/dotfiles-devcontainer/base:local"* ]]
+  [[ "$output" == *"build --pull --secret id=github_token,env=GITHUB_TOKEN -f "* ]]
 }
