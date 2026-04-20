@@ -7,7 +7,7 @@
   - Skip flags: `SKIP_DOTFILES`, `SKIP_MISE`, `SKIP_FISH`, `SKIP_GH`, `SKIP_AWS`, `SKIP_SUBMODULES` (`1` to skip).
   - Hook path/order: optional `HOOK_ORDER` (`before|after`), hook at `/workspace/.devcontainer/hooks/post-create`.
 - Behavior:
-  - Runs shared steps; only executes submodule init when `.gitmodules` exists and submodules are uninitialized.
+  - Runs shared steps, including workspace `mise.toml` trust when present; only executes submodule init when `.gitmodules` exists and submodules are uninitialized.
   - Invokes hook once if executable and present in configured order.
   - Emits clear logs for executed and skipped steps.
 - Outputs:

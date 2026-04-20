@@ -468,6 +468,7 @@ The template ships a base post-create entrypoint at `/usr/local/bin/devcontainer
 Base entrypoint responsibilities:
 
 - Sync dotfiles via `setup-dotfiles` (respects `SKIP_DOTFILES`, plus forwards `SKIP_MISE`, `SKIP_FISH`, `SKIP_GH`, `SKIP_AWS` to the installer)
+- Trust the workspace `mise.toml` when present (skip with `SKIP_MISE=1`)
 - Refresh the shell prompt and configure `git safe.directory`
 - Guard git submodules (skip with `SKIP_SUBMODULES=1`)
 - Fail fast if required inputs are missing or the entrypoint is not executable
