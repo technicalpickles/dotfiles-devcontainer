@@ -10,7 +10,7 @@ TEMPLATE_ID="dotfiles"
 CLEAN_BUILD_DIR=false
 
 usage() {
-  cat << EOF
+  cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
 
 Stop and clean up the dotfiles template container.
@@ -36,24 +36,24 @@ EOF
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    -c | --clean)
-      CLEAN_BUILD_DIR=true
-      shift
-      ;;
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    -*)
-      echo "Error: Unknown option $1" >&2
-      usage
-      exit 1
-      ;;
-    *)
-      echo "Error: Unexpected argument $1" >&2
-      usage
-      exit 1
-      ;;
+  -c | --clean)
+    CLEAN_BUILD_DIR=true
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -*)
+    echo "Error: Unknown option $1" >&2
+    usage
+    exit 1
+    ;;
+  *)
+    echo "Error: Unexpected argument $1" >&2
+    usage
+    exit 1
+    ;;
   esac
 done
 

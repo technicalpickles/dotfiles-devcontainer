@@ -1,6 +1,7 @@
 # VS Code Dev Container Templates — How They Work and How to Create Your Own
 
 ## Overview
+
 VS Code **Dev Container Templates** are packaged configurations that define ready-to-use development environments. They include metadata, configuration files, and optional setup scripts. These templates can be published to registries (such as GHCR) and used to quickly scaffold reproducible environments in VS Code or via the Dev Container CLI.
 
 ---
@@ -8,24 +9,27 @@ VS Code **Dev Container Templates** are packaged configurations that define read
 ## How Dev Container Templates Work
 
 ### Concept
+
 - A **Template** contains a `devcontainer.json` and a `devcontainer-template.json` file.
 - When a developer applies a template, the system copies these files into their workspace and replaces placeholders (e.g., `${templateOption:...}`) with user-provided values.
 - Templates are distributed as OCI artifacts (e.g., `ghcr.io/org/repo/template:version`).
 
 ### Templates vs. Features
-| Concept | Description |
-|----------|--------------|
-| **Templates** | Define a full environment setup — base image, features, settings, etc. |
-| **Features** | Modular add-ons referenced inside a `devcontainer.json` to install extra tools. |
+
+| Concept       | Description                                                                     |
+| ------------- | ------------------------------------------------------------------------------- |
+| **Templates** | Define a full environment setup — base image, features, settings, etc.          |
+| **Features**  | Modular add-ons referenced inside a `devcontainer.json` to install extra tools. |
 
 Templates often combine multiple features into one opinionated environment.
 
 ---
 
 ## Structure of a Template
+
 A minimal template folder must include:
 
-```
+```text
 src/<template-name>/
 │
 ├── devcontainer-template.json   # Metadata and user options
@@ -34,6 +38,7 @@ src/<template-name>/
 ```
 
 ### Example: `devcontainer-template.json`
+
 ```json
 {
   "id": "node",
@@ -58,12 +63,15 @@ src/<template-name>/
 ```
 
 ### Example: `devcontainer.json`
+
 ```json
 {
   "name": "Node",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:0-${templateOption:nodeVersion}",
   "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "${templateOption:nodeVersion}" },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "${templateOption:nodeVersion}"
+    },
     "ghcr.io/devcontainers/features/pnpm:1": { "version": "latest" }
   }
 }
@@ -74,7 +82,9 @@ src/<template-name>/
 ## Step-by-Step: Creating Your Own Template
 
 ### 1. Scaffold
+
 Start from the official starter repository:
+
 ```bash
 git clone https://github.com/devcontainers/template-starter my-template
 cd my-template
@@ -83,10 +93,13 @@ cd my-template
 This repo includes a GitHub Actions workflow and folder layout for publishing.
 
 ### 2. Add Your Template Files
+
 Inside `src/<your-template>/`, add your `devcontainer.json` and `devcontainer-template.json`. Define any `options` that users can customize.
 
 ### 3. Test Locally
+
 Use the Dev Container CLI:
+
 ```bash
 npm i -g @devcontainers/cli
 
@@ -100,21 +113,28 @@ devcontainer templates apply \
 ```
 
 ### 4. Publish
+
 Push to GitHub Container Registry (GHCR):
+
 ```bash
 echo $GHCR_TOKEN | docker login ghcr.io -u <user> --password-stdin
 devcontainer templates publish ./src --registry ghcr.io/<org>/<repo>
 ```
+
 Reference it later as:
-```
+
+```text
 ghcr.io/<org>/<repo>/<template>:<version>
 ```
 
 ### 5. Consume
+
 In VS Code:
+
 > **Command Palette → Dev Containers: Add Dev Container Configuration Files…**
 
 Or via CLI:
+
 ```bash
 devcontainer templates apply \
   --workspace-folder . \
@@ -134,5 +154,5 @@ devcontainer templates apply \
 ---
 
 ## Summary
-Dev Container Templates streamline environment setup by packaging complete configurations with user-tunable options. They’re easy to create, test, and publish — and integrate seamlessly into both VS Code and the Dev Container CLI. Start from the template-starter, define your metadata and configuration, and publish to GHCR for others to use.
 
+Dev Container Templates streamline environment setup by packaging complete configurations with user-tunable options. They’re easy to create, test, and publish — and integrate seamlessly into both VS Code and the Dev Container CLI. Start from the template-starter, define your metadata and configuration, and publish to GHCR for others to use.

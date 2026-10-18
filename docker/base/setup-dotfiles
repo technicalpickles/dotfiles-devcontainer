@@ -42,43 +42,43 @@ PY
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --repo)
-      REPO="$2"
-      shift 2
-      ;;
-    --branch)
-      BRANCH="$2"
-      shift 2
-      ;;
-    --dest)
-      DEST="$2"
-      shift 2
-      ;;
-    --env)
-      ENV_VARS+=("$2")
-      shift 2
-      ;;
-    --install-arg)
-      INSTALL_ARGS+=("$2")
-      shift 2
-      ;;
-    --install-args-json)
-      append_install_args_json "$2"
-      shift 2
-      ;;
-    --install-args-b64)
-      append_install_args_json "$(python3 -c 'import base64, sys; print(base64.b64decode(sys.argv[1]).decode())' "$2")"
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage
-      exit 1
-      ;;
+  --repo)
+    REPO="$2"
+    shift 2
+    ;;
+  --branch)
+    BRANCH="$2"
+    shift 2
+    ;;
+  --dest)
+    DEST="$2"
+    shift 2
+    ;;
+  --env)
+    ENV_VARS+=("$2")
+    shift 2
+    ;;
+  --install-arg)
+    INSTALL_ARGS+=("$2")
+    shift 2
+    ;;
+  --install-args-json)
+    append_install_args_json "$2"
+    shift 2
+    ;;
+  --install-args-b64)
+    append_install_args_json "$(python3 -c 'import base64, sys; print(base64.b64decode(sys.argv[1]).decode())' "$2")"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    usage
+    exit 1
+    ;;
   esac
 done
 

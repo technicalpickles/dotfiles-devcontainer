@@ -24,7 +24,7 @@ PULL_BASE=false
 BASE_IMAGE_OVERRIDE=""
 
 usage() {
-  cat << EOF
+  cat <<EOF
 Usage: $(basename "$0") [--template <id>] [--workdir <path>] [--devcontainer-cli <path>] [--base-image <image>] [--no-cache] [--pull-base] [--keep-artifacts]
 
 Build the template, run the smoke test, and clean up (mirrors the CI workflow).
@@ -44,43 +44,43 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --template)
-      TEMPLATE_ID="$2"
-      shift 2
-      ;;
-    --workdir)
-      WORKDIR="$2"
-      shift 2
-      ;;
-    --devcontainer-cli)
-      DEVCONTAINER_CLI="$2"
-      shift 2
-      ;;
-    --base-image)
-      BASE_IMAGE_OVERRIDE="$2"
-      shift 2
-      ;;
-    --no-cache)
-      NO_CACHE=true
-      shift
-      ;;
-    --pull-base)
-      PULL_BASE=true
-      shift
-      ;;
-    --keep-artifacts|--keep)
-      KEEP_ARTIFACTS=true
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage
-      exit 1
-      ;;
+  --template)
+    TEMPLATE_ID="$2"
+    shift 2
+    ;;
+  --workdir)
+    WORKDIR="$2"
+    shift 2
+    ;;
+  --devcontainer-cli)
+    DEVCONTAINER_CLI="$2"
+    shift 2
+    ;;
+  --base-image)
+    BASE_IMAGE_OVERRIDE="$2"
+    shift 2
+    ;;
+  --no-cache)
+    NO_CACHE=true
+    shift
+    ;;
+  --pull-base)
+    PULL_BASE=true
+    shift
+    ;;
+  --keep-artifacts | --keep)
+    KEEP_ARTIFACTS=true
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    usage
+    exit 1
+    ;;
   esac
 done
 
@@ -92,7 +92,6 @@ TEMPLATE_DIR="$REPO_ROOT/src/${TEMPLATE_ID}"
 BUILD_DIR="${WORKDIR%/}/${TEMPLATE_ID}"
 TEST_DIR="$REPO_ROOT/test/${TEMPLATE_ID}"
 ID_LABEL="test-container=${TEMPLATE_ID}"
-LOCAL_WORKSPACE_BASENAME="$(basename "${BUILD_DIR}")"
 if [[ -n "${DEVCONTAINER_CLI}" ]]; then
   DEVCONTAINER_CMD=("${DEVCONTAINER_CLI}")
 else
@@ -113,7 +112,7 @@ cleanup() {
   CONTAINERS=$(docker ps -a --filter "label=${ID_LABEL}" --format "{{.ID}}")
   if [[ -n "${CONTAINERS}" ]]; then
     echo "Removing test containers..."
-    docker rm -f ${CONTAINERS} >/dev/null
+    docker rm -f "${CONTAINERS}" >/dev/null
   fi
 
   if [[ -d "${BUILD_DIR}" ]]; then
@@ -122,7 +121,9 @@ cleanup() {
   fi
 
   # Remove any images tied to this workspace/config to avoid stale dotfiles
+  # shellcheck disable=SC2046  # empty id list must expand to nothing
   docker image rm -f $(docker images --filter "label=devcontainer.local_folder=${BUILD_DIR}" --format "{{.ID}}") >/dev/null 2>&1 || true
+  # shellcheck disable=SC2046  # empty id list must expand to nothing
   docker image rm -f $(docker images --filter "label=devcontainer.config_file=${BUILD_DIR}/.devcontainer/devcontainer.json" --format "{{.ID}}") >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -135,9 +136,11 @@ echo
 echo "Removing any existing test containers/images..."
 EXISTING=$(docker ps -a --filter "label=${ID_LABEL}" --format "{{.ID}}")
 if [[ -n "${EXISTING}" ]]; then
-  docker rm -f ${EXISTING} >/dev/null
+  docker rm -f "${EXISTING}" >/dev/null
 fi
+# shellcheck disable=SC2046  # empty id list must expand to nothing
 docker image rm -f $(docker images --filter "label=devcontainer.local_folder=${BUILD_DIR}" --format "{{.ID}}") >/dev/null 2>&1 || true
+# shellcheck disable=SC2046  # empty id list must expand to nothing
 docker image rm -f $(docker images --filter "label=devcontainer.config_file=${BUILD_DIR}/.devcontainer/devcontainer.json" --format "{{.ID}}") >/dev/null 2>&1 || true
 
 echo "Preparing build directory..."
@@ -223,7 +226,7 @@ if [[ "${OPTION_PROPERTY}" != "" && "${OPTION_PROPERTY}" != "null" ]]; then
       else
         find ./ -path '*/.git/*' -prune -o -type f -print0 | xargs -0 sed -i -e "s/${OPTION_KEY}/${OPTION_VALUE_ESCAPED}/g"
       fi
-    done <<< "${OPTIONS}"
+    done <<<"${OPTIONS}"
   fi
 fi
 

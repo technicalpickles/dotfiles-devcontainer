@@ -12,7 +12,7 @@ export HOOK_ORDER="${HOOK_ORDER:-before}"
 
 DEFAULT_HOOK_PATH="/workspace/.devcontainer/hooks/post-create"
 if [[ ! -e $DEFAULT_HOOK_PATH ]]; then
-	DEFAULT_HOOK_PATH="$(pwd)/.devcontainer/hooks/post-create"
+  DEFAULT_HOOK_PATH="$(pwd)/.devcontainer/hooks/post-create"
 fi
 export HOOK_PATH="${HOOK_PATH:-${DEFAULT_HOOK_PATH}}"
 
@@ -24,9 +24,9 @@ echo "   HOOK_ORDER=${HOOK_ORDER}"
 echo "   HOOK_PATH=${HOOK_PATH}"
 
 if [[ ! -x $BASE_POST_CREATE ]]; then
-	echo "Expected base entrypoint at ${BASE_POST_CREATE}, but it is missing or not executable."
-	echo "Ensure the base image includes devcontainer-post-create."
-	exit 1
+  echo "Expected base entrypoint at ${BASE_POST_CREATE}, but it is missing or not executable."
+  echo "Ensure the base image includes devcontainer-post-create."
+  exit 1
 fi
 
 "$BASE_POST_CREATE"

@@ -46,31 +46,31 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version)
-      VERSION_OVERRIDE="$2"
-      shift 2
-      ;;
-    --dry-run)
-      DRY_RUN="true"
-      shift
-      ;;
-    --skip-tests)
-      SKIP_TESTS="true"
-      shift
-      ;;
-    --result-path)
-      RESULT_PATH="$2"
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage
-      exit 1
-      ;;
+  --version)
+    VERSION_OVERRIDE="$2"
+    shift 2
+    ;;
+  --dry-run)
+    DRY_RUN="true"
+    shift
+    ;;
+  --skip-tests)
+    SKIP_TESTS="true"
+    shift
+    ;;
+  --result-path)
+    RESULT_PATH="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    usage
+    exit 1
+    ;;
   esac
 done
 
@@ -151,7 +151,9 @@ fi
 
 # Note: devcontainer features publish uses version from devcontainer-feature.json, not a CLI flag
 # Note: devcontainer CLI doesn't support --dry-run for publish, so dry-run just skips the publish step
-PUBLISH_CMD=($DEVCONTAINER_BIN features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE")
+# DEVCONTAINER_BIN can be a multi-word command (e.g. "npx devcontainer"), so split it on purpose
+read -ra DEVCONTAINER_ARGV <<<"$DEVCONTAINER_BIN"
+PUBLISH_CMD=("${DEVCONTAINER_ARGV[@]}" features publish "$FEATURE_PATH" --registry "$REGISTRY" --namespace "$NAMESPACE")
 if [[ "$DRY_RUN" == "true" ]]; then
   # devcontainer CLI doesn't support --dry-run for publish, so we just skip the publish step
   echo "Dry-run mode: skipping actual publish"
@@ -179,7 +181,8 @@ else
   fi
 fi
 
-SUMMARY="$(node - "$FEATURE_PATH/devcontainer-feature.json" "$REGISTRY" "$NAMESPACE" "$FEATURE_NAME" "$VERSION" "$REF" "$DIGEST" "$PACKAGE_TARBALL" <<'NODE'
+SUMMARY="$(
+  node - "$FEATURE_PATH/devcontainer-feature.json" "$REGISTRY" "$NAMESPACE" "$FEATURE_NAME" "$VERSION" "$REF" "$DIGEST" "$PACKAGE_TARBALL" <<'NODE'
 const fs = require('fs');
 const [file, registry, namespace, featureName, version, ref, digest, pkg] = process.argv.slice(2);
 const feature = JSON.parse(fs.readFileSync(file, 'utf8'));

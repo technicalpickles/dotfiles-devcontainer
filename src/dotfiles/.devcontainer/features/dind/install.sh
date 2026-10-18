@@ -6,16 +6,16 @@ START_DIR="/usr/local/share/dind"
 START_SCRIPT="${START_DIR}/start-dind.sh"
 
 sudo_if() {
-	if [ "$(id -u)" -ne 0 ]; then
-		sudo "$@"
-	else
-		"$@"
-	fi
+  if [ "$(id -u)" -ne 0 ]; then
+    sudo "$@"
+  else
+    "$@"
+  fi
 }
 
 write_start_script() {
-	sudo_if mkdir -p "$START_DIR"
-	sudo_if tee "$START_SCRIPT" >/dev/null <<'EOF'
+  sudo_if mkdir -p "$START_DIR"
+  sudo_if tee "$START_SCRIPT" >/dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -95,7 +95,7 @@ fi
 
 exec "$@"
 EOF
-	sudo_if chmod +x "$START_SCRIPT"
+  sudo_if chmod +x "$START_SCRIPT"
 }
 
 write_start_script
