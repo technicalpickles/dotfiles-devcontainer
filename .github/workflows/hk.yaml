@@ -15,5 +15,8 @@ jobs:
       - name: Install tools
         uses: jdx/mise-action@v2
 
+      - name: Install npm dependencies (prettier, markdownlint)
+        run: npm ci
+
       - name: Run hk checks
         run: hk check --all
