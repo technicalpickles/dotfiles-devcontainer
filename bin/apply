@@ -91,7 +91,7 @@ detect_dotfiles_repo() {
   fi
 
   # Source 2: Git config github.user
-  if command -v git &> /dev/null; then
+  if command -v git &>/dev/null; then
     local github_user
     github_user=$(git config --get github.user 2>/dev/null || echo "")
     if [[ -n "$github_user" ]]; then
@@ -108,13 +108,13 @@ detect_dotfiles_repo() {
       if [[ -n "$remote_url" ]]; then
         DETECTED_REPO_LOCAL=$(normalize_git_url "$remote_url")
         [[ "$VERBOSE" == "true" ]] && echo "   • Found via local ${local_path}: $DETECTED_REPO_LOCAL"
-        break  # Prefer ~/dotfiles over ~/.dotfiles
+        break # Prefer ~/dotfiles over ~/.dotfiles
       fi
     fi
   done
 
   # Source 4: GitHub CLI authenticated user
-  if command -v gh &> /dev/null; then
+  if command -v gh &>/dev/null; then
     local gh_user
     gh_user=$(gh auth status 2>&1 | grep "Logged in" | sed -n 's/.*account \([^ ]*\).*/\1/p' || echo "")
     if [[ -n "$gh_user" ]]; then
@@ -195,15 +195,15 @@ detect_platform() {
   local arch
   arch="$(uname -m || true)"
   case "$arch" in
-    arm64|aarch64)
-      PLATFORM_DETECTED="linux/arm64"
-      ;;
-    x86_64|amd64)
-      PLATFORM_DETECTED="linux/amd64"
-      ;;
-    *)
-      PLATFORM_DETECTED=""
-      ;;
+  arm64 | aarch64)
+    PLATFORM_DETECTED="linux/arm64"
+    ;;
+  x86_64 | amd64)
+    PLATFORM_DETECTED="linux/amd64"
+    ;;
+  *)
+    PLATFORM_DETECTED=""
+    ;;
   esac
 
   if [[ -n "$PLATFORM_OVERRIDE" ]]; then
@@ -339,90 +339,90 @@ is_local_dind_ref() {
 
 apply_mode_presets() {
   case "$MODE" in
-    local-dev)
-      if [[ -z "$DIND_FEATURE_REF" ]]; then
-        DIND_FEATURE_REF="./features/dind"
-      fi
-      if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
-        AWS_CLI_FEATURE_REF="./features/aws-cli"
-      fi
-      if [[ -z "$CLAUDE_CODE_FEATURE_REF" ]]; then
-        CLAUDE_CODE_FEATURE_REF="./features/claude-code"
-      fi
-      ;;
-    latest)
-      # Use :latest tags for all features (requires features to be published with latest tag)
-      if [[ -z "$DIND_FEATURE_REF" ]]; then
-        DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind:latest"
-      fi
-      if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
-        AWS_CLI_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/aws-cli:latest"
-      fi
-      ;;
-    ci-unpinned)
-      # Use template defaults (published tag) unless caller overrides
-      ;;
-    ci-pinned)
-      if [[ -z "$DIND_FEATURE_REF" ]]; then
-        echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (ghcr...@sha256:<digest>)" >&2
+  local-dev)
+    if [[ -z "$DIND_FEATURE_REF" ]]; then
+      DIND_FEATURE_REF="./features/dind"
+    fi
+    if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
+      AWS_CLI_FEATURE_REF="./features/aws-cli"
+    fi
+    if [[ -z "$CLAUDE_CODE_FEATURE_REF" ]]; then
+      CLAUDE_CODE_FEATURE_REF="./features/claude-code"
+    fi
+    ;;
+  latest)
+    # Use :latest tags for all features (requires features to be published with latest tag)
+    if [[ -z "$DIND_FEATURE_REF" ]]; then
+      DIND_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/dind:latest"
+    fi
+    if [[ -z "$AWS_CLI_FEATURE_REF" ]]; then
+      AWS_CLI_FEATURE_REF="ghcr.io/technicalpickles/devcontainer-features/aws-cli:latest"
+    fi
+    ;;
+  ci-unpinned)
+    # Use template defaults (published tag) unless caller overrides
+    ;;
+  ci-pinned)
+    if [[ -z "$DIND_FEATURE_REF" ]]; then
+      echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (ghcr...@sha256:<digest>)" >&2
+      exit 1
+    fi
+    if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
+      echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+      exit 1
+    fi
+    if [[ -n "$AWS_CLI_FEATURE_REF" && ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
+      echo "Error: MODE ci-pinned requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+      exit 1
+    fi
+    if [[ -n "$CLAUDE_CODE_FEATURE_REF" && ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
+      echo "Error: MODE ci-pinned requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+      exit 1
+    fi
+    ;;
+  release)
+    if [[ -z "$DIND_FEATURE_REF" ]]; then
+      echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (no local refs)" >&2
+      exit 1
+    fi
+    if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
+      echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+      exit 1
+    fi
+    if is_local_dind_ref "$DIND_FEATURE_REF"; then
+      echo "Error: MODE release does not allow local feature references" >&2
+      exit 1
+    fi
+    if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
+      if [[ ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE release requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
         exit 1
       fi
-      if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
-        echo "Error: MODE ci-pinned requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
-        exit 1
-      fi
-      if [[ -n "$AWS_CLI_FEATURE_REF" && ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
-        echo "Error: MODE ci-pinned requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
-        exit 1
-      fi
-      if [[ -n "$CLAUDE_CODE_FEATURE_REF" && ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
-        echo "Error: MODE ci-pinned requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
-        exit 1
-      fi
-      ;;
-    release)
-      if [[ -z "$DIND_FEATURE_REF" ]]; then
-        echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (no local refs)" >&2
-        exit 1
-      fi
-      if [[ ! "$DIND_FEATURE_REF" =~ @sha256: ]]; then
-        echo "Error: MODE release requires DIND_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
-        exit 1
-      fi
-      if is_local_dind_ref "$DIND_FEATURE_REF"; then
+      if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
         echo "Error: MODE release does not allow local feature references" >&2
         exit 1
       fi
-      if [[ -n "$AWS_CLI_FEATURE_REF" ]]; then
-        if [[ ! "$AWS_CLI_FEATURE_REF" =~ @sha256: ]]; then
-          echo "Error: MODE release requires AWS_CLI_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
-          exit 1
-        fi
-        if is_local_dind_ref "$AWS_CLI_FEATURE_REF"; then
-          echo "Error: MODE release does not allow local feature references" >&2
-          exit 1
-        fi
+    fi
+    if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
+      if [[ ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
+        echo "Error: MODE release requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
+        exit 1
       fi
-      if [[ -n "$CLAUDE_CODE_FEATURE_REF" ]]; then
-        if [[ ! "$CLAUDE_CODE_FEATURE_REF" =~ @sha256: ]]; then
-          echo "Error: MODE release requires CLAUDE_CODE_FEATURE_REF pinned to a digest (@sha256:<digest>)" >&2
-          exit 1
-        fi
-        if is_local_dind_ref "$CLAUDE_CODE_FEATURE_REF"; then
-          echo "Error: MODE release does not allow local feature references" >&2
-          exit 1
-        fi
+      if is_local_dind_ref "$CLAUDE_CODE_FEATURE_REF"; then
+        echo "Error: MODE release does not allow local feature references" >&2
+        exit 1
       fi
-      ;;
-    *)
-      echo "Error: Unknown MODE: ${MODE}" >&2
-      exit 1
-      ;;
+    fi
+    ;;
+  *)
+    echo "Error: Unknown MODE: ${MODE}" >&2
+    exit 1
+    ;;
   esac
 }
 
 usage() {
-  cat << 'EOF'
+  cat <<'EOF'
 Usage: apply MODE [OPTIONS] [TARGET_DIR]
 
 Apply the dotfiles devcontainer template to a project directory.
@@ -517,65 +517,65 @@ fi
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    --env)
-      # Parse KEY=VALUE and add to associative array
-      if [[ "$2" =~ ^([^=]+)=(.*)$ ]]; then
-        ENV_VARS+=("${BASH_REMATCH[1]}=${BASH_REMATCH[2]}")
-      else
-        echo "Error: --env requires KEY=VALUE format, got: $2" >&2
-        exit 1
-      fi
-      shift 2
-      ;;
-    --install-arg)
-      INSTALL_ARGS+=("$2")
-      shift 2
-      ;;
-    --repo)
-      DOTFILES_REPO="$2"
-      DOTFILES_REPO_WAS_FLAG=true
-      shift 2
-      ;;
-    --branch)
-      DOTFILES_BRANCH="$2"
-      shift 2
-      ;;
-    --shell)
-      USER_SHELL="$2"
-      shift 2
-      ;;
-    --platform)
-      PLATFORM_OVERRIDE="$2"
-      shift 2
-      ;;
-    --verbose)
-      VERBOSE="true"
-      shift
-      ;;
-    --no-dind)
-      SKIP_DIND="true"
-      shift
-      ;;
-    -*)
-      echo "Error: Unknown option: $1" >&2
-      echo "Use --help for usage information" >&2
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --env)
+    # Parse KEY=VALUE and add to associative array
+    if [[ "$2" =~ ^([^=]+)=(.*)$ ]]; then
+      ENV_VARS+=("${BASH_REMATCH[1]}=${BASH_REMATCH[2]}")
+    else
+      echo "Error: --env requires KEY=VALUE format, got: $2" >&2
       exit 1
-      ;;
-    *)
-      if [[ -z "$MODE" ]]; then
-        MODE="$1"
-      elif [[ -z "$TARGET_DIR" ]]; then
-        TARGET_DIR="$1"
-      else
-        echo "Error: Unexpected argument: $1" >&2
-        exit 1
-      fi
-      shift
-      ;;
+    fi
+    shift 2
+    ;;
+  --install-arg)
+    INSTALL_ARGS+=("$2")
+    shift 2
+    ;;
+  --repo)
+    DOTFILES_REPO="$2"
+    DOTFILES_REPO_WAS_FLAG=true
+    shift 2
+    ;;
+  --branch)
+    DOTFILES_BRANCH="$2"
+    shift 2
+    ;;
+  --shell)
+    USER_SHELL="$2"
+    shift 2
+    ;;
+  --platform)
+    PLATFORM_OVERRIDE="$2"
+    shift 2
+    ;;
+  --verbose)
+    VERBOSE="true"
+    shift
+    ;;
+  --no-dind)
+    SKIP_DIND="true"
+    shift
+    ;;
+  -*)
+    echo "Error: Unknown option: $1" >&2
+    echo "Use --help for usage information" >&2
+    exit 1
+    ;;
+  *)
+    if [[ -z "$MODE" ]]; then
+      MODE="$1"
+    elif [[ -z "$TARGET_DIR" ]]; then
+      TARGET_DIR="$1"
+    else
+      echo "Error: Unexpected argument: $1" >&2
+      exit 1
+    fi
+    shift
+    ;;
   esac
 done
 
@@ -695,15 +695,15 @@ detect_platform
 echo
 
 # Check if devcontainer CLI is installed
-if ! command -v devcontainer &> /dev/null; then
+if ! command -v devcontainer &>/dev/null; then
   echo "⚠️  devcontainer CLI not found"
   echo "📦 Installing @devcontainers/cli..."
 
   # Check if npx is available
-  if command -v npx &> /dev/null; then
+  if command -v npx &>/dev/null; then
     echo "   Using npx (no installation needed)"
     DEVCONTAINER_CMD="npx --yes @devcontainers/cli"
-  elif command -v npm &> /dev/null; then
+  elif command -v npm &>/dev/null; then
     echo "   Installing globally with npm..."
     npm install -g @devcontainers/cli
     DEVCONTAINER_CMD="devcontainer"
@@ -776,9 +776,9 @@ if [[ "$IS_IN_REPO" == "true" ]]; then
   fi
   set -u
 
-   # Replace placeholders in devcontainer.json
-   # Use Python for JSON-aware replacement to handle containerEnv as object, not string
-   python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" "$SKIP_DIND" "$DOTFILES_INSTALL_ARGS_B64" <<'PY'
+  # Replace placeholders in devcontainer.json
+  # Use Python for JSON-aware replacement to handle containerEnv as object, not string
+  python3 - .devcontainer/devcontainer.json "$DOTFILES_REPO" "$DOTFILES_BRANCH" "$USER_SHELL" "$USER_SHELL_NAME" "$CONTAINER_ENV_JSON" "$SKIP_DIND" "$DOTFILES_INSTALL_ARGS_B64" <<'PY'
 import json, sys, re
 path = sys.argv[1]
 dotfiles_repo = sys.argv[2]
@@ -874,8 +874,8 @@ PY
     cp -R "$TEMPLATE_SOURCE/.devcontainer/features/." .devcontainer/features/
   fi
 
-   if [[ -n "$PLATFORM_SELECTED" ]]; then
-     python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json "$SKIP_DIND" <<'PY'
+  if [[ -n "$PLATFORM_SELECTED" ]]; then
+    python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json "$SKIP_DIND" <<'PY'
 import json, sys, re
 platform = sys.argv[1]
 path = sys.argv[2]
@@ -899,7 +899,7 @@ with open(path, 'w', encoding='utf-8') as f:
     json.dump(obj, f, indent=2)
     f.write('\n')
 PY
-   fi
+  fi
 
   override_feature_refs
   prune_vendored_features
@@ -935,10 +935,10 @@ else
     --template-args dotfilesInstallArgsB64="$DOTFILES_INSTALL_ARGS_B64" \
     --template-args userShell="$USER_SHELL" \
     --template-args userShellName="$USER_SHELL_NAME" \
-    $ENV_ARGS
+    "$ENV_ARGS"
 
-   if [[ -n "$PLATFORM_SELECTED" && -f ".devcontainer/devcontainer.json" ]]; then
-     python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json "$SKIP_DIND" <<'PY'
+  if [[ -n "$PLATFORM_SELECTED" && -f ".devcontainer/devcontainer.json" ]]; then
+    python3 - "$PLATFORM_SELECTED" .devcontainer/devcontainer.json "$SKIP_DIND" <<'PY'
 import json, sys, re
 platform = sys.argv[1]
 path = sys.argv[2]
@@ -962,7 +962,7 @@ with open(path, 'w', encoding='utf-8') as f:
     json.dump(obj, f, indent=2)
     f.write('\n')
 PY
-   fi
+  fi
 
   override_feature_refs
   prune_vendored_features

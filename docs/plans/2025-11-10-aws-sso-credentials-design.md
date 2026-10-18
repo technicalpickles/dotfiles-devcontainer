@@ -24,6 +24,7 @@ Mount the host's `~/.aws` directory as read-only into the devcontainer. This mak
 ### Architecture
 
 **Authentication Flow:**
+
 1. User runs `aws sso login` on host Mac
 2. Browser opens for SSO authentication
 3. Credentials cached in `~/.aws/sso/cache/` and `~/.aws/cli/cache/`
@@ -31,6 +32,7 @@ Mount the host's `~/.aws` directory as read-only into the devcontainer. This mak
 5. AWS SDK/CLI tools in container use credentials transparently
 
 **Components:**
+
 - **Host:** AWS CLI, browser for SSO auth, credential cache storage (source of truth)
 - **Container:** AWS CLI/SDKs (read-only consumers), dev tools requiring AWS access
 - **Mount:** `~/.aws` → `/home/vscode/.aws` (read-only bind mount)
@@ -63,17 +65,20 @@ Mount the host's `~/.aws` directory as read-only into the devcontainer. This mak
 ### User Workflow
 
 **Session start (on host):**
+
 ```bash
 aws sso login
 # Browser authenticates, credentials cached
 ```
 
 **Work in container:**
+
 - Open VS Code, reopen in container
 - All AWS commands/tools work automatically
 - Claude (Bedrock), deploy scripts, etc. have credentials
 
 **Credential expiration (a few times per day):**
+
 - Switch to host terminal
 - Run `aws sso login`
 - Return to container - new credentials immediately available
@@ -82,7 +87,7 @@ aws sso login
 
 ✅ Claude via AWS Bedrock
 ✅ Any AWS SDK usage (boto3, aws-sdk-js, etc.)
-✅ AWS CLI read operations (s3 ls, describe-*, get-*, list-*)
+✅ AWS CLI read operations (s3 ls, describe-_, get-_, list-\*)
 ✅ Deploy tools that assume AWS credentials
 ✅ Works with default profile (no `--profile` flag needed)
 
@@ -99,11 +104,13 @@ When credentials expire, tools will show standard AWS auth errors - this is the 
 ### Why Read-Only Mount?
 
 **Considered alternatives:**
+
 1. **Read-write mount** - More flexible but introduces file permission issues, risk of corruption, timestamp sync problems
 2. **Split mount** (config read-only, cache read-write) - More complex, still has permission risks, unclear benefit
 3. **Credential copying/syncing** - Adds complexity, sync timing issues, security risks
 
 **Read-only chosen because:**
+
 - Simplest implementation (single mount line)
 - No file permission/ownership issues (read-only eliminates write conflicts)
 - Host remains single source of truth
@@ -139,6 +146,7 @@ When credentials expire, tools will show standard AWS auth errors - this is the 
 ## Future Enhancements
 
 If user needs arise:
+
 - Add SSH agent forwarding for git operations
 - Add 1Password socket mount for 1Password CLI
 - Document how to use `AWS_PROFILE` env var for profile switching

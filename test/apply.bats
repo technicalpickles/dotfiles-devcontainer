@@ -43,7 +43,8 @@ run_apply() {
   if [[ -n "$install_args_json" && "$install_args_source" == "cli" ]]; then
     while IFS= read -r arg; do
       install_arg_flags+=(--install-arg "$arg")
-    done < <(python3 - "$install_args_json" <<'PY'
+    done < <(
+      python3 - "$install_args_json" <<'PY'
 import json
 import sys
 for item in json.loads(sys.argv[1]):
@@ -326,8 +327,8 @@ NODE
 @test "platform auto-detected and recorded in devcontainer build options" {
   local expected_platform=""
   case "$(uname -m)" in
-    arm64|aarch64) expected_platform="linux/arm64" ;;
-    x86_64|amd64) expected_platform="linux/amd64" ;;
+  arm64 | aarch64) expected_platform="linux/arm64" ;;
+  x86_64 | amd64) expected_platform="linux/amd64" ;;
   esac
   if [[ -z "$expected_platform" ]]; then
     skip "unknown host arch for platform detection test"
@@ -389,7 +390,7 @@ NODE
   [ "$status" -eq 0 ]
 
   local fake_base="$WORKDIR/fake-devcontainer-post-create"
-  echo "#!/usr/bin/env bash" > "$fake_base"
+  echo "#!/usr/bin/env bash" >"$fake_base"
   chmod 644 "$fake_base"
 
   [ -f "$fake_base" ]

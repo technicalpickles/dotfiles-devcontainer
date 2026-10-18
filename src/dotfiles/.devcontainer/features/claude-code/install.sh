@@ -10,8 +10,8 @@ CLAUDE_CONFIG_DIR="/home/vscode/.claude"
 SETTINGS_FILE="$CLAUDE_CONFIG_DIR/settings.json"
 su - vscode -c "mkdir -p '$CLAUDE_CONFIG_DIR'"
 if [[ ! -f $SETTINGS_FILE ]]; then
-	su - vscode -c "echo '{\"hasCompletedOnboarding\": true}' > '$SETTINGS_FILE'"
-	echo "Pre-seeded settings to skip interactive setup."
+  su - vscode -c "echo '{\"hasCompletedOnboarding\": true}' > '$SETTINGS_FILE'"
+  echo "Pre-seeded settings to skip interactive setup."
 fi
 
 # Use the official installer as vscode user.

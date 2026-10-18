@@ -22,19 +22,19 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag)
-      IMAGE_TAG="$2"
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage
-      exit 1
-      ;;
+  --tag)
+    IMAGE_TAG="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    usage
+    exit 1
+    ;;
   esac
 done
 
@@ -43,6 +43,8 @@ if ! GITHUB_TOKEN=$(resolve_github_token); then
   echo "Warning: Building without GitHub authentication - may hit rate limits"
   GITHUB_TOKEN=""
 fi
+# docker build --secret env=GITHUB_TOKEN reads it from the environment
+export GITHUB_TOKEN
 
 echo "Building base image: ${IMAGE_TAG}"
 DOCKER_BUILDKIT=1 docker build \

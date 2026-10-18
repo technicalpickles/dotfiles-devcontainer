@@ -3,7 +3,11 @@ act = "latest"
 actionlint = "latest"
 bats = "latest"
 node = "lts"
+hk = "2.0.0"
 pkl = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+yamllint = "latest"
 
 [env]
 _.path = ['{{config_root}}/node_modules/.bin']

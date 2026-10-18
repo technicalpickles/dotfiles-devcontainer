@@ -13,65 +13,65 @@ TMP_FEATURE_DIR=""
 TMP_PUBLISH_FILE=""
 
 cleanup() {
-	if [[ -n $TMP_FEATURE_DIR && -d $TMP_FEATURE_DIR ]]; then
-		rm -rf "$TMP_FEATURE_DIR"
-	fi
-	if [[ -n $TMP_PUBLISH_FILE && -f $TMP_PUBLISH_FILE ]]; then
-		rm -f "$TMP_PUBLISH_FILE"
-	fi
+  if [[ -n $TMP_FEATURE_DIR && -d $TMP_FEATURE_DIR ]]; then
+    rm -rf "$TMP_FEATURE_DIR"
+  fi
+  if [[ -n $TMP_PUBLISH_FILE && -f $TMP_PUBLISH_FILE ]]; then
+    rm -f "$TMP_PUBLISH_FILE"
+  fi
 }
 trap cleanup EXIT
 
 if [[ -n $FEATURE_TARBALL ]]; then
-	TMP_FEATURE_DIR="$(mktemp -d)"
-	echo "✓ extracting feature tarball ${FEATURE_TARBALL}"
-	tar -xf "$FEATURE_TARBALL" -C "$TMP_FEATURE_DIR"
-	found_json="$(find "$TMP_FEATURE_DIR" -type f -name devcontainer-feature.json | head -n 1 || true)"
-	if [[ -z $found_json ]]; then
-		echo "Unable to locate devcontainer-feature.json inside ${FEATURE_TARBALL}" >&2
-		exit 1
-	fi
-	FEATURE_SOURCE="$(cd "$(dirname "$found_json")" && pwd)"
-	echo "✓ tarball contains valid feature structure"
+  TMP_FEATURE_DIR="$(mktemp -d)"
+  echo "✓ extracting feature tarball ${FEATURE_TARBALL}"
+  tar -xf "$FEATURE_TARBALL" -C "$TMP_FEATURE_DIR"
+  found_json="$(find "$TMP_FEATURE_DIR" -type f -name devcontainer-feature.json | head -n 1 || true)"
+  if [[ -z $found_json ]]; then
+    echo "Unable to locate devcontainer-feature.json inside ${FEATURE_TARBALL}" >&2
+    exit 1
+  fi
+  FEATURE_SOURCE="$(cd "$(dirname "$found_json")" && pwd)"
+  echo "✓ tarball contains valid feature structure"
 elif [[ -d $FEATURE_SOURCE ]]; then
-	FEATURE_SOURCE="$(cd "$FEATURE_SOURCE" && pwd)"
+  FEATURE_SOURCE="$(cd "$FEATURE_SOURCE" && pwd)"
 else
-	echo "FEATURE_SOURCE does not exist: ${FEATURE_SOURCE}" >&2
-	exit 1
+  echo "FEATURE_SOURCE does not exist: ${FEATURE_SOURCE}" >&2
+  exit 1
 fi
 
 if [[ ! -f "$FEATURE_SOURCE/devcontainer-feature.json" ]]; then
-	echo "devcontainer-feature.json not found under ${FEATURE_SOURCE}" >&2
-	exit 1
+  echo "devcontainer-feature.json not found under ${FEATURE_SOURCE}" >&2
+  exit 1
 fi
 
 if [[ -z $FEATURE_VERSION ]]; then
-	FEATURE_VERSION="$(node -e "console.log(require(process.argv[1]).version || '')" "$FEATURE_SOURCE/devcontainer-feature.json")"
+  FEATURE_VERSION="$(node -e "console.log(require(process.argv[1]).version || '')" "$FEATURE_SOURCE/devcontainer-feature.json")"
 fi
 
 display_ref="$FEATURE_VERSION"
 if [[ -n $FEATURE_DIGEST ]]; then
-	display_ref="${display_ref}@${FEATURE_DIGEST}"
+  display_ref="${display_ref}@${FEATURE_DIGEST}"
 fi
 
 validate_publish_summary() {
-	local publish_file=""
-	if [[ -n $PUBLISH_RESULT_PATH && -f $PUBLISH_RESULT_PATH ]]; then
-		publish_file="$PUBLISH_RESULT_PATH"
-	elif [[ -n $PUBLISH_RESULT_JSON ]]; then
-		TMP_PUBLISH_FILE="$(mktemp)"
-		printf '%s\n' "$PUBLISH_RESULT_JSON" >"$TMP_PUBLISH_FILE"
-		publish_file="$TMP_PUBLISH_FILE"
-	fi
+  local publish_file=""
+  if [[ -n $PUBLISH_RESULT_PATH && -f $PUBLISH_RESULT_PATH ]]; then
+    publish_file="$PUBLISH_RESULT_PATH"
+  elif [[ -n $PUBLISH_RESULT_JSON ]]; then
+    TMP_PUBLISH_FILE="$(mktemp)"
+    printf '%s\n' "$PUBLISH_RESULT_JSON" >"$TMP_PUBLISH_FILE"
+    publish_file="$TMP_PUBLISH_FILE"
+  fi
 
-	if [[ -z $publish_file ]]; then
-		echo "⚠️  No publish metadata provided; skipping publish validation"
-		return 0
-	fi
+  if [[ -z $publish_file ]]; then
+    echo "⚠️  No publish metadata provided; skipping publish validation"
+    return 0
+  fi
 
-	echo "✓ validating publish metadata"
+  echo "✓ validating publish metadata"
 
-	node - "$publish_file" "$FEATURE_VERSION" <<'NODE'
+  node - "$publish_file" "$FEATURE_VERSION" <<'NODE'
 const fs = require('fs');
 const [file, expectedVersion] = process.argv.slice(2);
 const data = JSON.parse(fs.readFileSync(file, 'utf8'));

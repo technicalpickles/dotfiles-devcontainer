@@ -70,7 +70,10 @@ RUN --mount=type=secret,id=github_token \
     && curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
 
 # Install goss (pinned version)
-RUN curl -fsSL https://goss.rocks/install | GOSS_VER="${GOSS_VERSION}" GOSS_DST=/usr/local/bin sh
+# (goss.rocks/install now requests a tarball asset that releases no longer ship,
+# so fetch the release binary directly)
+RUN curl -fsSL "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/goss-linux-$(dpkg --print-architecture)" -o /usr/local/bin/goss \
+    && chmod +x /usr/local/bin/goss
 
 # Dotfiles setup helper + base post-create entrypoint
 COPY docker/base/setup-dotfiles /usr/local/bin/setup-dotfiles
