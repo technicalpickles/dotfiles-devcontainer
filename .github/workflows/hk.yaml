@@ -1,0 +1,19 @@
+name: "CI - hk"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  hk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        uses: jdx/mise-action@v2
+
+      - name: Run hk checks
+        run: hk check --all

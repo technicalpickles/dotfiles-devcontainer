@@ -3,6 +3,7 @@ act = "latest"
 actionlint = "latest"
 bats = "latest"
 node = "lts"
+hk = "2.0.0"
 pkl = "latest"
 
 [env]
