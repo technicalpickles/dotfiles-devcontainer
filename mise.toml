@@ -2,7 +2,7 @@
 act = "latest"
 actionlint = "latest"
 bats = "latest"
-node = "lts"
+node = "24.22.1"
 hk = "2.0.0"
 pkl = "latest"
 shellcheck = "latest"
